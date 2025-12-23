@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Expense_Tracker",
+    "name": "Xpense",
     "slug": "Expense_Tracker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.edwinliby.Expense_Tracker"
     },
     "web": {
       "output": "static",
@@ -43,6 +44,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8e8b5186-4eb3-4888-a596-e03c784a732f"
+      }
     }
   }
 }

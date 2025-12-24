@@ -1,15 +1,15 @@
 import { AchievementUnlockModal } from '@/components/AchievementUnlockModal';
+import { DebtCreditCard } from '@/components/DebtCreditCard';
 import { ExpenseCard } from '@/components/ExpenseCard';
+import { HomeChart } from '@/components/HomeChart';
 import { ProgressBar } from '@/components/ProgressBar';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, format, getDaysInMonth, isWithinInterval, startOfMonth, subMonths } from 'date-fns';
-import { LinearGradient } from 'expo-linear-gradient';
 import { AlertCircle, ChevronLeft, ChevronRight, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LineChart } from 'react-native-gifted-charts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const screenWidth = Dimensions.get('window').width;
@@ -117,6 +117,7 @@ export default function DashboardScreen() {
 
       data.push({
         value: cumulativeTotal,
+        date: i.toString(),
         label: i % 5 === 0 || i === 1 ? i.toString() : '',
         dataPointText: (i % 5 === 0 || i === daysInMonth) && cumulativeTotal > 0 ? cumulativeTotal.toFixed(0) : '',
         textColor: Colors.text,
@@ -149,6 +150,7 @@ export default function DashboardScreen() {
         const value = getEffectiveSpent(monthStart, monthEnd);
         data.push({
           value,
+          date: format(monthStart, 'MMM'),
           label: format(monthStart, 'MMM'),
           dataPointText: value > 0 ? Math.round(value).toString() : '',
           textColor: Colors.text,
@@ -261,29 +263,6 @@ export default function DashboardScreen() {
 
         {/* Main Card */}
         <View style={[styles.mainCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
-          {/* Period Selector */}
-          <View style={styles.periodSelector}>
-            <TouchableOpacity
-              onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev - 1) : setSelectedBarIndex(prev => Math.max(prev - 1, 0))}
-              style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
-              disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
-            >
-              <ChevronLeft size={20} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
-            </TouchableOpacity>
-
-            <Text style={[styles.periodText, { color: Colors.text }]}>
-              {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${now.getFullYear()}` : 'Current Month')}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev + 1) : setSelectedBarIndex(prev => Math.min(prev + 1, monthlyData.length - 1))}
-              style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
-              disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
-            >
-              <ChevronRight size={20} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
-            </TouchableOpacity>
-          </View>
-
           {/* Stats */}
           <View style={styles.statsContainer}>
             <View>
@@ -300,65 +279,13 @@ export default function DashboardScreen() {
 
           {/* Chart */}
           <View style={styles.chartContainer}>
-            {viewMode === 'monthly' ? (
-              <LineChart
-                key={`monthly-line-${selectedBarIndex}`}
-                data={currentMonthLineData}
-                data2={previousMonthLineData}
-                width={screenWidth - 60}
-                height={150}
-                thickness={3}
-                thickness2={2}
-                color={Colors.primary}
-                color2={Colors.textSecondary + '40'}
-                curved
-                isAnimated
-                areaChart
-                startFillColor={Colors.primary}
-                endFillColor={Colors.surface}
-                startOpacity={0.2}
-                endOpacity={0}
-                hideRules
-                dataPointsColor={Colors.primary}
-                textColor={Colors.text}
-                textFontSize={10}
-                textShiftY={-6}
-                textShiftX={-4}
-                yAxisThickness={0}
-                xAxisThickness={0}
-                hideYAxisText
-                maxValue={maxMonthlyValue * 1.2}
-                initialSpacing={10}
-                spacing={(screenWidth - 80) / (Math.max(currentMonthLineData.length, 1))}
-              />
-            ) : (
-              <LineChart
-                key={`yearly-line-${selectedYear}`}
-                data={chartData}
-                width={screenWidth - 60}
-                height={150}
-                thickness={3}
-                color={Colors.primary}
-                curved
-                isAnimated
-                areaChart
-                startFillColor={Colors.primary}
-                endFillColor={Colors.surface}
-                startOpacity={0.2}
-                endOpacity={0}
-                hideRules
-                dataPointsColor={Colors.primary}
-                textColor={Colors.text}
-                textFontSize={11}
-                yAxisThickness={0}
-                xAxisThickness={0}
-                hideYAxisText
-                maxValue={maxYearlyValue * 1.2}
-                xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 10 }}
-                initialSpacing={10}
-                spacing={(screenWidth - 60) / (Math.max(yearlyData.length, 1))}
-              />
-            )}
+            <HomeChart
+              data={viewMode === 'monthly' ? currentMonthLineData : chartData}
+              data2={viewMode === 'monthly' ? previousMonthLineData : undefined}
+              viewMode={viewMode}
+              maxValue={viewMode === 'monthly' ? maxMonthlyValue : maxYearlyValue}
+              currencySymbol={currencySymbol}
+            />
           </View>
 
           {/* Budget Bar */}
@@ -402,99 +329,61 @@ export default function DashboardScreen() {
                 </View>
               )}
           </View>
+
+          {/* Period Selector */}
+          <View style={styles.periodSelector}>
+            <TouchableOpacity
+              onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev - 1) : setSelectedBarIndex(prev => Math.max(prev - 1, 0))}
+              style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
+              disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
+            >
+              <ChevronLeft size={20} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
+            </TouchableOpacity>
+
+            <Text style={[styles.periodText, { color: Colors.text }]}>
+              {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${now.getFullYear()}` : 'Current Month')}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev + 1) : setSelectedBarIndex(prev => Math.min(prev + 1, monthlyData.length - 1))}
+              style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
+              disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
+            >
+              <ChevronRight size={20} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* --- Owed Sections --- */}
         {(() => {
           const lentTransactions = transactions.filter(t => t.isLent && !t.isPaidBack);
           const totalLent = lentTransactions.reduce((acc, t) => acc + t.amount, 0);
-          if (totalLent > 0) {
-            return (
-              <View style={styles.sectionContainer}>
-                <Text style={[styles.sectionTitle, { color: Colors.text }]}>Owed by Friends</Text>
-                <LinearGradient
-                  colors={[Colors.success, Colors.successLight]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.owedCard, Styles.shadow, { shadowColor: Colors.success }]}
-                >
-                  <View style={styles.owedHeader}>
-                    <Text style={styles.owedLabel}>Total Owed to You</Text>
-                    <Text style={styles.owedValue}>{currencySymbol}{totalLent.toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.owedList}>
-                    {lentTransactions.map(t => (
-                      <View key={t.id} style={styles.owedRow}>
-                        <View style={styles.owedInfo}>
-                          <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                            <Text style={styles.avatarText}>{t.lentTo?.[0]?.toUpperCase()}</Text>
-                          </View>
-                          <View>
-                            <Text style={styles.owedName}>{t.lentTo}</Text>
-                            <Text style={styles.owedDate}>{format(new Date(t.date), 'MMM d')}</Text>
-                          </View>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.settleBtn}
-                          onPress={() => deleteTransaction(t.id)}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                          <Text style={[styles.settleText, { color: Colors.success }]}>Settle</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                </LinearGradient>
-              </View>
-            );
-          }
-          return null;
-        })()}
 
-        {(() => {
           const owedTransactions = transactions.filter(t => t.isFriendPayment && !t.isPaidBack);
           const totalOwed = owedTransactions.reduce((acc, t) => acc + t.amount, 0);
-          if (totalOwed > 0) {
-            return (
-              <View style={styles.sectionContainer}>
-                <Text style={[styles.sectionTitle, { color: Colors.text }]}>Debts</Text>
-                <LinearGradient
-                  colors={[Colors.danger, Colors.dangerLight]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.owedCard, Styles.shadow, { shadowColor: Colors.danger }]}
-                >
-                  <View style={styles.owedHeader}>
-                    <Text style={styles.owedLabel}>Total You Owe</Text>
-                    <Text style={styles.owedValue}>{currencySymbol}{totalOwed.toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.owedList}>
-                    {owedTransactions.map(t => (
-                      <View key={t.id} style={styles.owedRow}>
-                        <View style={styles.owedInfo}>
-                          <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                            <Text style={styles.avatarText}>{t.paidBy?.[0]?.toUpperCase()}</Text>
-                          </View>
-                          <View>
-                            <Text style={styles.owedName}>{t.paidBy}</Text>
-                            <Text style={styles.owedDate}>{format(new Date(t.date), 'MMM d')}</Text>
-                          </View>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.settleBtn}
-                          onPress={() => editTransaction(t.id, { isPaidBack: true })}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                          <Text style={[styles.settleText, { color: Colors.danger }]}>Repay</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                </LinearGradient>
-              </View>
-            );
-          }
-          return null;
+
+          return (
+            <>
+              {totalLent > 0 && (
+                <DebtCreditCard
+                  type="owed"
+                  amount={totalLent}
+                  transactions={lentTransactions}
+                  onSettle={(id) => deleteTransaction(id)} // Assuming 'delete' settles it, or we could update
+                  currencySymbol={currencySymbol}
+                />
+              )}
+              {totalOwed > 0 && (
+                <DebtCreditCard
+                  type="debt"
+                  amount={totalOwed}
+                  transactions={owedTransactions}
+                  onSettle={(id) => editTransaction(id, { isPaidBack: true })}
+                  currencySymbol={currencySymbol}
+                />
+              )}
+            </>
+          );
         })()}
 
         {/* Recent Transactions */}
@@ -573,7 +462,7 @@ const styles = StyleSheet.create({
   mainCard: {
     marginHorizontal: 16,
     borderRadius: 24,
-    padding: 20,
+    padding: 18,
     marginBottom: 24,
   },
   gradientBackground: {
@@ -588,7 +477,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 24,
   },
   chevronBtn: {
     padding: 8,

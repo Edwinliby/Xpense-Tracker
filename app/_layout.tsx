@@ -3,6 +3,7 @@ import { Colors } from '@/constants/Colors';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -16,9 +17,24 @@ import { ExpenseProvider } from '../store/expenseStore';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [loaded] = useFonts({
+    'Geist-Regular': require('../assets/fonts/Geist-Regular.ttf'),
+    'Geist-Medium': require('../assets/fonts/Geist-Medium.ttf'),
+    'Geist-SemiBold': require('../assets/fonts/Geist-SemiBold.ttf'),
+    'Geist-Bold': require('../assets/fonts/Geist-Bold.ttf'),
+    'Geist-Black': require('../assets/fonts/Geist-Black.ttf'),
+    'Geist-Light': require('../assets/fonts/Geist-Light.ttf'),
+  });
+
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

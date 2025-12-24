@@ -111,12 +111,12 @@ const styles = StyleSheet.create({
     label: {
         color: 'rgba(255,255,255,0.9)',
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold', // Changed from fontWeight: '600'
     },
     totalValue: {
         color: '#FFF',
         fontSize: 22,
-        fontWeight: '800',
+        fontFamily: 'Geist-Bold', // Changed from fontWeight: '800'
     },
     list: {
         gap: 12,
@@ -147,22 +147,22 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         color: '#FFF',
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold', // Changed from fontWeight: '700'
         fontSize: 16,
     },
     name: {
         color: '#FFF',
-        fontWeight: '700',
+        fontFamily: 'Geist-Medium', // Changed from fontWeight: '700'
         fontSize: 15,
     },
     date: {
         color: 'rgba(255,255,255,0.95)', // Much more visible date
         fontSize: 12,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium', // Changed from fontWeight: '500'
     },
     amountText: {
         color: '#FFF',
-        fontWeight: '700',
+        fontFamily: 'Geist-SemiBold', // Changed from fontWeight: '700'
         fontSize: 15,
     },
     settleBtn: {

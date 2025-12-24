@@ -74,7 +74,7 @@ export const HomeChart: React.FC<HomeChartProps> = ({
         textColor={Colors.text}
         textFontSize={10}
         textShiftY={-6}
-        xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 10, fontWeight: '500' }}
+        xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 10, fontFamily: 'Geist-Medium' }}
 
         // Interaction / Pointer
         pointerConfig={{
@@ -93,7 +93,7 @@ export const HomeChart: React.FC<HomeChartProps> = ({
               style={{
                 height: 12,
                 width: 12,
-                borderRadius: 6,  
+                borderRadius: 6,
                 backgroundColor: Colors.primary,
                 borderWidth: 2,
                 borderColor: Colors.surface,
@@ -123,14 +123,14 @@ export const HomeChart: React.FC<HomeChartProps> = ({
                   borderWidth: 1,
                   borderColor: Colors.border,
                 }}>
-                <Text style={{ color: Colors.textSecondary, fontSize: 10, marginBottom: 2 }}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 10, marginBottom: 2, fontFamily: 'Geist-Regular' }}>
                   {viewMode === 'monthly' ? `Day ${item?.date}` : item?.date}
                 </Text>
-                <Text style={{ color: Colors.text, fontSize: 14, fontWeight: 'bold' }}>
+                <Text style={{ color: Colors.text, fontSize: 14, fontFamily: 'Geist-Bold' }}>
                   {currencySymbol}{item?.value?.toFixed(0)}
                 </Text>
                 {secondaryItem && (
-                  <Text style={{ color: Colors.textSecondary, fontSize: 10, marginTop: 2 }}>
+                  <Text style={{ color: Colors.textSecondary, fontSize: 10, marginTop: 2, fontFamily: 'Geist-Regular' }}>
                     Vs {currencySymbol}{secondaryItem?.value?.toFixed(0)}
                   </Text>
                 )}

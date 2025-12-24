@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontFamily: 'Geist-Bold',
         position: 'absolute',
         left: '50%',
     },
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     },
     warningText: {
         fontSize: 12,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
     },
     card: {
         borderRadius: 20,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     },
     category: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
         marginBottom: 2,
     },
     description: {
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     },
     amount: {
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold',
     },
     actionFooter: {
         flexDirection: 'row',
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     },
     deleteTime: {
         fontSize: 10,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
     },
     actionButtons: {
         flexDirection: 'row',
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     },
     actionText: {
         fontSize: 12,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
         marginLeft: 2,
     },
     emptyContainer: {
@@ -288,11 +288,12 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontFamily: 'Geist-Bold',
         marginBottom: 8,
     },
     emptySubtext: {
         fontSize: 14,
         textAlign: 'center',
+        fontFamily: 'Geist-Regular',
     },
 });

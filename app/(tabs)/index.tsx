@@ -242,7 +242,11 @@ export default function DashboardScreen() {
         <View style={[styles.header, { backgroundColor: Colors.background }]}>
           <View>
             <Text style={[styles.greeting, { color: Colors.textSecondary }]}>Welcome back,</Text>
-            <Text style={[styles.title, { color: Colors.text }]}>Dashboard</Text>
+            <Text style={[styles.title, { color: Colors.text }]}>
+              {
+                budget > 0 && budget < displaySpent ? 'Lavish Spender' : 'Economical Man'
+              }
+            </Text>
           </View>
 
           <View style={[styles.toggleContainer, { backgroundColor: Colors.surfaceHighlight }]}>
@@ -274,6 +278,11 @@ export default function DashboardScreen() {
               <Text style={[styles.statValue, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
                 {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
               </Text>
+              {viewMode === 'yearly' && (
+                <Text style={{ fontSize: 10, color: Colors.textSecondary, marginTop: 2, opacity: 0.8 }}>
+                  {activeMonthsCount} Month{activeMonthsCount !== 1 ? 's' : ''} • {currencySymbol}{(displaySaved + displaySpent).toLocaleString()}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -433,12 +442,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   greeting: {
-    fontSize: 14,
+    fontSize: 12,
     marginBottom: 4,
+    fontFamily: 'Geist-Regular',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 22,
+    fontFamily: 'Geist-Bold',
   },
   toggleContainer: {
     flexDirection: 'row',
@@ -453,7 +463,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   toggleText: {
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
     fontSize: 12,
   },
   activeToggleText: {
@@ -485,7 +495,7 @@ const styles = StyleSheet.create({
   },
   periodText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -497,20 +507,21 @@ const styles = StyleSheet.create({
   },
   statsLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: 'Geist-Medium',
     marginBottom: 4,
   },
   statsValue: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: 'Geist-Bold',
   },
   statLabel: {
     fontSize: 12,
     marginBottom: 4,
+    fontFamily: 'Geist-Regular',
   },
   statValue: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: 'Geist-Bold',
   },
   statsSubtext: {
     fontSize: 12,
@@ -532,11 +543,11 @@ const styles = StyleSheet.create({
   },
   budgetLabel: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: 'Geist-Medium',
   },
   budgetTotal: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
   },
   sectionContainer: {
     marginBottom: 24,
@@ -550,13 +561,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 20,
+    fontFamily: 'Geist-Bold',
     marginBottom: 12,
   },
   seeAll: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
   },
   owedCard: {
     marginHorizontal: 20,
@@ -573,12 +583,12 @@ const styles = StyleSheet.create({
   owedLabel: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: 'Geist-Medium',
   },
   owedValue: {
     color: '#FFF',
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: 'Geist-Bold',
   },
   owedList: {
     gap: 12,
@@ -602,12 +612,12 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#FFF',
-    fontWeight: '700',
+    fontFamily: 'Geist-Bold',
     fontSize: 14,
   },
   owedName: {
     color: '#FFF',
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
     fontSize: 14,
   },
   owedDate: {
@@ -622,7 +632,7 @@ const styles = StyleSheet.create({
   },
   settleText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
   },
   transactionsList: {
     gap: 4,
@@ -643,6 +653,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
+    fontFamily: 'Geist-Regular',
   },
   budgetContainer: {
     marginTop: 20,
@@ -656,7 +667,7 @@ const styles = StyleSheet.create({
   },
   budgetRemaining: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
     marginTop: 8,
     textAlign: 'right',
   },
@@ -678,7 +689,7 @@ const styles = StyleSheet.create({
   },
   miniDisplayText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
   },
   totalOwedCard: {
     marginHorizontal: 20,
@@ -692,12 +703,12 @@ const styles = StyleSheet.create({
   },
   totalOwedLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
     color: 'rgba(255,255,255,0.9)',
   },
   totalOwedValue: {
     fontSize: 24,
-    fontWeight: '800',
+    fontFamily: 'Geist-Black',
     color: '#FFF',
     marginTop: 4
   },
@@ -710,7 +721,7 @@ const styles = StyleSheet.create({
   owedBadgeText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Geist-Bold',
   },
   friendCard: {
     marginHorizontal: 20,
@@ -738,14 +749,14 @@ const styles = StyleSheet.create({
   },
   friendAvatarText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: 'Geist-Bold',
   },
   friendInfo: {
     flex: 1,
   },
   friendName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: 'Geist-SemiBold',
     marginBottom: 2,
   },
   friendDetails: {
@@ -761,7 +772,7 @@ const styles = StyleSheet.create({
   },
   friendAmount: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: 'Geist-Bold',
     marginBottom: 6,
   },
   payBackButton: {
@@ -772,6 +783,6 @@ const styles = StyleSheet.create({
   payBackText: {
     color: '#FFF',
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: 'Geist-Bold',
   },
 });

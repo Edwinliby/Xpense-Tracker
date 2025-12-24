@@ -297,7 +297,7 @@ export default function AddTransactionScreen() {
                             >
                                 {IconComponent && (
                                     <IconComponent
-                                        size={18}
+                                        size={16}
                                         color={isSelected ? '#fff' : cat.color}
                                     />
                                 )}
@@ -388,7 +388,7 @@ export default function AddTransactionScreen() {
                     <View style={[styles.divider, { backgroundColor: Colors.border }]} />
 
                     {/* Receipt */}
-                    <View style={[styles.cardRow, { alignItems: 'flex-start', paddingTop: 16 }]}>
+                    <View style={[styles.cardRow, { alignItems: 'flex-start' }]}>
                         <View style={[styles.cardIcon, { marginTop: 2 }]}>
                             <ImageIcon size={20} color={Colors.textSecondary} />
                         </View>
@@ -524,7 +524,7 @@ export default function AddTransactionScreen() {
                     title={isEditing ? "Update Transaction" : "Save Transaction"}
                     onPress={handleSave}
                     style={{ flex: 1 }}
-                    textStyle={{ fontSize: 16, fontWeight: 'bold' }}
+                    textStyle={{ fontSize: 16, fontFamily: 'Geist-Bold' }}
                 />
             </View>
 
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontFamily: 'Geist-Bold',
     },
     closeButton: {
         padding: 8,
@@ -579,12 +579,12 @@ const styles = StyleSheet.create({
     },
     currencySymbol: {
         fontSize: 36, // Slightly smaller than numbers
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
         marginRight: 4,
     },
     heroText: {
         fontSize: 56,
-        fontWeight: 'bold',
+        fontFamily: 'Geist-Bold',
     },
     hiddenInput: {
         position: 'absolute',
@@ -618,32 +618,32 @@ const styles = StyleSheet.create({
     },
     segmentText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
     },
     sectionTitle: {
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
         marginBottom: 12,
         marginLeft: 4,
     },
     categoryContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 6,
         marginBottom: 30,
     },
     categoryChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 6,
         borderRadius: 24,
         borderWidth: 1,
-        gap: 8,
+        gap: 6,
     },
     categoryText: {
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: 12,
+        fontFamily: 'Geist-Medium',
     },
     card: {
         borderRadius: 20,
@@ -653,8 +653,8 @@ const styles = StyleSheet.create({
     cardRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        gap: 16,
+        padding: 6,
+        gap: 12,
     },
     cardIcon: {
         width: 36,
@@ -670,11 +670,11 @@ const styles = StyleSheet.create({
     },
     cardValue: {
         fontSize: 16,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
     },
     divider: {
         height: 1,
-        marginLeft: 64,
+        marginVertical: 6,
     },
     plainInput: {
         fontSize: 16,
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     },
     actionChipText: {
         fontSize: 13,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
     },
     optionRow: {
         flexDirection: 'row',
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: 16,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
     },
     optionBlock: {
         borderRadius: 16,
@@ -745,6 +745,7 @@ const styles = StyleSheet.create({
     optionSub: {
         fontSize: 12,
         marginTop: 2,
+        fontFamily: 'Geist-Regular',
     },
     footer: {
         padding: 20,
@@ -765,10 +766,10 @@ const styles = StyleSheet.create({
     receiptContainer: { marginBottom: 16 },
     friendPaymentContainer: { marginBottom: 16 },
     friendPaymentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    friendPaymentLabel: { fontSize: 15, fontWeight: '600' },
+    friendPaymentLabel: { fontSize: 15, fontFamily: 'Geist-SemiBold' },
     imageButtonsContainer: { flexDirection: 'row', gap: 12 },
     imageButton: { width: '100%', flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, borderWidth: 1, gap: 8 },
-    imageButtonText: { fontSize: 15, fontWeight: '500' },
+    imageButtonText: { fontSize: 15, fontFamily: 'Geist-Medium' },
     imagePreviewContainer: { position: 'relative', borderRadius: 16, overflow: 'hidden', height: 220 },
     receiptImage: { width: '100%', height: '100%' },
     imageActionsContainer: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', gap: 10 },

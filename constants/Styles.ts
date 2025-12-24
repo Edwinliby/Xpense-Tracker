@@ -12,7 +12,7 @@ export const useStyles = () => {
     },
     title: {
       fontSize: 28,
-      fontWeight: "bold",
+      fontFamily: "Geist-Bold",
       color: Colors.text,
       marginBottom: 20,
     },
@@ -20,7 +20,7 @@ export const useStyles = () => {
       fontSize: 18,
       color: Colors.textSecondary,
       marginBottom: 16,
-      fontWeight: "600",
+      fontFamily: "Geist-SemiBold",
     },
     card: {
       paddingHorizontal: 4,
@@ -41,10 +41,12 @@ export const useStyles = () => {
     text: {
       color: Colors.text,
       fontSize: 16,
+      fontFamily: "Geist-Regular",
     },
     textSecondary: {
       color: Colors.textSecondary,
       fontSize: 14,
+      fontFamily: "Geist-Regular",
     },
     shadow: {
       shadowColor: Colors.shadow,

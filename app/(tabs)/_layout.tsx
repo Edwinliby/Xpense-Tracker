@@ -1,7 +1,7 @@
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs, useRouter } from 'expo-router';
-import { LayoutDashboard, PieChart, Plus, Settings, Trophy } from 'lucide-react-native';
+import { LayoutDashboard, PieChart, PiggyBank, Plus, Settings, Trophy } from 'lucide-react-native';
 import React from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -94,6 +94,19 @@ export default function TabLayout() {
           },
         }}
       />
+
+      <Tabs.Screen
+        name="goals"
+        options={{
+          title: 'Goals',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <PiggyBank size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+              {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
+            </View>
+          ),
+        }}
+      />
       <Tabs.Screen
         name="achievements"
         options={{
@@ -134,7 +147,7 @@ const styles = StyleSheet.create({
   addButtonContainer: {
     top: -20,
     left: '50%',
-    transform: [{ translateX: -30 }], 
+    transform: [{ translateX: -30 }],
     justifyContent: 'center',
     alignItems: 'center',
     width: 60,

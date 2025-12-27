@@ -24,13 +24,11 @@ export const fetchExchangeRate = async (
     if (cachedData) {
       const parsed = JSON.parse(cachedData) as CachedRates;
       if (Date.now() - parsed.timestamp < CACHE_DURATION) {
-        console.log("Using cached USD rates");
         rates = parsed.rates;
       }
     }
 
     if (!rates) {
-      console.log("Fetching fresh USD rates");
       const response = await fetch(
         `https://api.exchangerate-api.com/v4/latest/${BASE_CURRENCY}`
       );
@@ -62,7 +60,7 @@ export const fetchExchangeRate = async (
     }
 
     const finalRate = rateUsdToTarget / rateUsdToBase;
-    console.log(`Calculated Rate ${base} -> ${target}: ${finalRate} (via USD)`);
+
     return finalRate;
   } catch (error) {
     console.error("Failed to fetch exchange rate", error);

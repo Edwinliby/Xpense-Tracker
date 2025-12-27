@@ -36,6 +36,7 @@ export const toSupabaseTransaction = (t: Transaction) => ({
   recurrence_interval: t.recurrenceInterval,
   next_occurrence: t.nextOccurrence,
   parent_id: t.parentId,
+  exclude_from_budget: t.excludeFromBudget,
 });
 
 export const fromSupabaseTransaction = (t: any): Transaction => ({
@@ -59,6 +60,7 @@ export const fromSupabaseTransaction = (t: any): Transaction => ({
   recurrenceInterval: t.recurrence_interval,
   nextOccurrence: t.next_occurrence,
   parentId: t.parent_id,
+  excludeFromBudget: t.exclude_from_budget,
 });
 
 export const toSupabaseCategory = (c: Category) => ({

@@ -38,6 +38,7 @@ export default function AddTransactionScreen() {
     const [showImageEditor, setShowImageEditor] = useState(false);
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [isRecurring, setIsRecurring] = useState(false);
+    const [excludeFromBudget, setExcludeFromBudget] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -68,6 +69,7 @@ export default function AddTransactionScreen() {
                 setIsLent(getParam(params.isLent) === 'true');
                 setLentTo(getParam(params.lentTo));
                 setIsRecurring(getParam(params.isRecurring) === 'true');
+                setExcludeFromBudget(getParam(params.excludeFromBudget) === 'true');
 
             } else {
                 setAmount('');
@@ -81,8 +83,9 @@ export default function AddTransactionScreen() {
                 setLentTo('');
                 setReceiptImage(null);
                 setIsRecurring(false);
+                setExcludeFromBudget(false);
             }
-        }, [params.id, params.amount, params.description, params.category, params.type, params.date, params.receiptImage, params.isFriendPayment, params.paidBy, params.isLent, params.lentTo, params.isRecurring, isEditing])
+        }, [params.id, params.amount, params.description, params.category, params.type, params.date, params.receiptImage, params.isFriendPayment, params.paidBy, params.isLent, params.lentTo, params.isRecurring, params.excludeFromBudget, isEditing])
     );
 
     const handleSave = useCallback(() => {
@@ -132,6 +135,7 @@ export default function AddTransactionScreen() {
             isRecurring,
             recurrenceInterval: isRecurring ? 'monthly' as const : undefined,
             nextOccurrence: isRecurring ? addMonths(date, 1).toISOString() : undefined,
+            excludeFromBudget,
         };
 
         try {
@@ -146,7 +150,7 @@ export default function AddTransactionScreen() {
             console.error("Failed to save transaction:", error);
             Alert.alert('Error', 'Failed to save transaction');
         }
-    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring]);
+    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring, excludeFromBudget]);
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -440,6 +444,22 @@ export default function AddTransactionScreen() {
                                 value={isRecurring}
                                 onValueChange={setIsRecurring}
                                 trackColor={{ false: Colors.border, true: Colors.primary }}
+                            />
+                        </View>
+
+                        {/* Exclude from Budget */}
+                        <View style={[styles.optionRow, { backgroundColor: Colors.surface }]}>
+                            <View style={styles.optionLeft}>
+                                <Icons.EyeOff size={20} color={Colors.warning} />
+                                <View>
+                                    <Text style={[styles.optionText, { color: Colors.text }]}>Exclude from Budget</Text>
+                                    <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>Won&apos;t count towards monthly limit</Text>
+                                </View>
+                            </View>
+                            <Switch
+                                value={excludeFromBudget}
+                                onValueChange={setExcludeFromBudget}
+                                trackColor={{ false: Colors.border, true: Colors.warning }}
                             />
                         </View>
 

@@ -27,10 +27,11 @@ export default function DashboardScreen() {
   const now = useMemo(() => new Date(), []);
 
   // --- Data Helpers ---
-  const getSpentInInterval = useCallback((start: Date, end: Date) => {
+  const getSpentInInterval = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean }) => {
     return transactions
       .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end }))
       .filter(t => !(t.isLent && t.isPaidBack))
+      .filter(t => options?.includeExcluded ? true : !t.excludeFromBudget)
       .reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
@@ -52,9 +53,9 @@ export default function DashboardScreen() {
     return false;
   }, [incomeStartDate]);
 
-  const getEffectiveSpent = useCallback((start: Date, end: Date) => {
+  const getEffectiveSpent = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean }) => {
     if (!isAfterIncomeStart(start)) return 0;
-    return getSpentInInterval(start, end);
+    return getSpentInInterval(start, end, options);
   }, [isAfterIncomeStart, getSpentInInterval]);
 
   // --- Monthly Data (Last 3 Months) ---
@@ -111,6 +112,7 @@ export default function DashboardScreen() {
           isWithinInterval(new Date(t.date), { start: currentDayStart, end: currentDayEnd })
         )
         .filter(t => !(t.isLent && t.isPaidBack))
+        .filter(t => !t.excludeFromBudget)
         .reduce((acc, curr) => acc + curr.amount, 0);
 
       cumulativeTotal += dailySpent;
@@ -168,6 +170,18 @@ export default function DashboardScreen() {
     [yearlyData]
   );
 
+  const currentYearTotalSpent = useMemo(() => {
+    let total = 0;
+    for (let i = 0; i < 12; i++) {
+      const monthStart = startOfMonth(new Date(selectedYear, i, 1));
+      if (isAfterIncomeStart(monthStart)) {
+        const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
+        total += getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true });
+      }
+    }
+    return total;
+  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart]);
+
   const maxYearlyValue = useMemo(() => {
     return Math.max(...yearlyData.map(d => d.value), 100);
   }, [yearlyData]);
@@ -197,11 +211,16 @@ export default function DashboardScreen() {
       .filter(t => t.type === 'income' && new Date(t.date).getFullYear() === selectedYear)
       .reduce((acc, curr) => acc + curr.amount, 0);
 
-    return (annualIncome + yearlyIncomeTransactions) - currentYearSpent;
-  }, [annualIncome, currentYearSpent, transactions, selectedYear]);
+    return (annualIncome + yearlyIncomeTransactions) - currentYearTotalSpent;
+  }, [annualIncome, currentYearTotalSpent, transactions, selectedYear]);
 
   const selectedMonthSpent = useMemo(() =>
     getEffectiveSpent(monthRange.start, monthRange.end),
+    [monthRange, getEffectiveSpent]
+  );
+
+  const selectedMonthTotalSpent = useMemo(() =>
+    getEffectiveSpent(monthRange.start, monthRange.end, { includeExcluded: true }),
     [monthRange, getEffectiveSpent]
   );
 
@@ -219,13 +238,13 @@ export default function DashboardScreen() {
   const selectedMonthSaved = useMemo(() => {
     const monthlyStaticIncome = isAfterIncomeStart(monthRange.start) ? income : 0;
     const totalIncome = monthlyStaticIncome + selectedMonthIncomeTransactions;
-    return totalIncome - selectedMonthSpent;
-  }, [income, selectedMonthSpent, isAfterIncomeStart, monthRange, selectedMonthIncomeTransactions]);
+    return totalIncome - selectedMonthTotalSpent;
+  }, [income, selectedMonthTotalSpent, isAfterIncomeStart, monthRange, selectedMonthIncomeTransactions]);
 
   // --- Active Data Selection ---
   const chartData = useMemo(() => viewMode === 'yearly' ? yearlyData : monthlyData, [viewMode, yearlyData, monthlyData]);
 
-  const displaySpent = useMemo(() => viewMode === 'yearly' ? currentYearSpent : selectedMonthSpent, [viewMode, currentYearSpent, selectedMonthSpent]);
+  const displaySpent = useMemo(() => viewMode === 'yearly' ? currentYearTotalSpent : selectedMonthTotalSpent, [viewMode, currentYearTotalSpent, selectedMonthTotalSpent]);
 
   const displayLabel = useMemo(() => {
     if (viewMode === 'yearly') return `Spent in ${selectedYear}`;
@@ -325,18 +344,28 @@ export default function DashboardScreen() {
               style={{ borderRadius: 3 }}
             />
             {((viewMode === 'monthly' && selectedMonthSpent > (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))) ||
-              (viewMode === 'yearly' && currentYearSpent > (budget > 0 ? (budget * activeMonthsCount) : annualIncome))) && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 }}>
-                  <AlertCircle size={12} color={Colors.danger} />
-                  <Text style={{ color: Colors.danger, fontSize: 11, fontWeight: '600' }}>
-                    Over budget by {currencySymbol}
-                    {(viewMode === 'monthly'
-                      ? selectedMonthSpent - (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
-                      : currentYearSpent - (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
-                    ).toFixed(0)}
-                  </Text>
-                </View>
-              )}
+              (viewMode === 'yearly' && currentYearSpent > (budget > 0 ? (budget * activeMonthsCount) : annualIncome))) ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 }}>
+                <AlertCircle size={12} color={Colors.danger} />
+                <Text style={{ color: Colors.danger, fontSize: 11, fontWeight: '600' }}>
+                  Over budget by {currencySymbol}
+                  {(viewMode === 'monthly'
+                    ? selectedMonthSpent - (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
+                    : currentYearSpent - (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
+                  ).toFixed(0)}
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, justifyContent: 'flex-end' }}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
+                  {currencySymbol}
+                  {(viewMode === 'monthly'
+                    ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions)) - selectedMonthSpent
+                    : (budget > 0 ? (budget * activeMonthsCount) : annualIncome) - currentYearSpent
+                  ).toFixed(0)} left
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Period Selector */}

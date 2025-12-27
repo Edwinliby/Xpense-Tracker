@@ -21,6 +21,7 @@ export interface Transaction {
   recurrenceInterval?: "monthly";
   nextOccurrence?: string; // ISO string
   parentId?: string;
+  excludeFromBudget?: boolean;
 }
 
 export interface Category {

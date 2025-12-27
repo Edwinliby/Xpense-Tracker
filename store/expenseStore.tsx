@@ -9,6 +9,18 @@ import { addMonths } from 'date-fns';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
+export interface SavingsGoal {
+    id: string;
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+    color: string;
+    icon: string;
+    deadline?: string;
+    isCompleted: boolean;
+    priority: number; // Lower number = Higher priority
+}
+
 export type { Category, Transaction, TransactionType };
 
 interface ExpenseContextType {
@@ -40,9 +52,18 @@ interface ExpenseContextType {
     dismissedWarnings: Record<string, boolean>;
     dismissBudgetWarning: (monthKey: string) => void;
     newlyUnlockedAchievement: Achievement | null;
-
     clearNewlyUnlockedAchievement: () => void;
+
+
+
+
+
     isOffline: boolean;
+
+    goals: SavingsGoal[];
+    addGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'isCompleted'>) => void;
+    updateGoal: (id: string, updates: Partial<SavingsGoal>) => void;
+    deleteGoal: (id: string) => void;
 }
 
 interface SyncAction {
@@ -88,6 +109,136 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [newlyUnlockedAchievement, setNewlyUnlockedAchievement] = useState<Achievement | null>(null);
     const [isOffline, setIsOffline] = useState(false);
     const [syncQueue, setSyncQueue] = useState<SyncAction[]>([]);
+    const [goals, setGoals] = useState<SavingsGoal[]>([]);
+
+    // --- Auto-Funding Logic ---
+    const calculateFlexibleFunds = useCallback(() => {
+        let totalIncome = 0;
+        let startDateObj: Date | null = null;
+
+
+
+        // 1. Static Monthly Income
+        if (incomeStartDate && income > 0) {
+            // IncomeStartDate is format "YYYY-MM" usually
+            // We parse safely
+            const parts = incomeStartDate.split('-');
+            if (parts.length >= 2) {
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1; // 0-indexed
+                startDateObj = new Date(year, month, 1);
+
+                const now = new Date();
+                // Calculate months difference roughly
+                // Ensure we don't count future months if strict? User implies "past months" usually.
+                // Dashboard logic: monthsWithIncome = Math.max(0, endMonthIndex - startMonthIndex + 1);
+                // For "Total Available", we usually mean "Up to Now".
+                const months = (now.getFullYear() - year) * 12 + (now.getMonth() - month) + 1;
+
+                if (months > 0) {
+                    totalIncome += months * income;
+                }
+            } else {
+                // Fallback if Date parse fails but string exists?
+                startDateObj = new Date(incomeStartDate);
+            }
+        }
+
+        // 2. Income Transactions
+        // Filter out future income (unrealized)
+        const incomeTx = transactions.filter(t => t.type === 'income' && !t.deletedAt);
+        const relevantIncomeTx = incomeTx.filter(t => {
+            const d = new Date(t.date);
+            return d <= new Date() && (!startDateObj || d >= startDateObj);
+        });
+        const incomeTxTotal = relevantIncomeTx.reduce((sum, t) => sum + t.amount, 0);
+        totalIncome += incomeTxTotal;
+
+
+
+        // 3. Expenses
+        // Filter out expenses before the start date AND future expenses (recurring generated)
+        const expenseTx = transactions.filter(t => t.type === 'expense' && !t.deletedAt && !(t.isLent && t.isPaidBack));
+        const relevantExpenses = expenseTx.filter(t => {
+            const d = new Date(t.date);
+            return d <= new Date() && (!startDateObj || d >= startDateObj);
+        });
+
+        const totalExpenses = relevantExpenses.reduce((sum, t) => sum + t.amount, 0);
+
+
+        const final = Math.max(0, totalIncome - totalExpenses);
+
+        return final;
+    }, [income, incomeStartDate, transactions]);
+
+    const distributeFundsToGoals = useCallback(() => {
+        const availableFunds = calculateFlexibleFunds();
+        let remaining = availableFunds;
+        let hasChanges = false;
+
+
+
+
+
+        // Sort goals by Priority (Ascending) -> Higher priority first
+        // If priority is missing (legacy), treat as Infinity (last)
+        const sortedGoals = [...goals].sort((a, b) => {
+            const pA = a.priority ?? 999;
+            const pB = b.priority ?? 999;
+            return pA - pB;
+        });
+
+        const distributedGoals = sortedGoals.map(g => {
+            const needed = g.targetAmount;
+            // If manual completion allows 'overfilling' or specific state, we might need respect it. 
+            // But for now, we strictly fill up to target.
+            const allocated = Math.min(remaining, g.targetAmount); // Cap at target
+
+            // Deduct from remaining only what we actually allocated (or could allocate)
+            const actualAllocated = Math.max(0, allocated);
+            remaining = Math.max(0, remaining - actualAllocated);
+
+            const isNowCompleted = actualAllocated >= needed;
+
+            // Check if anything changed to avoid unnecessary re-renders/saves
+            // Need to be careful with double comparison if priority changed but amount didn't?
+            // But we are constructing a new array anyway.
+            if (g.currentAmount !== actualAllocated || g.isCompleted !== isNowCompleted) {
+                hasChanges = true;
+
+            }
+
+            return {
+                ...g,
+                currentAmount: actualAllocated,
+                isCompleted: isNowCompleted
+            };
+        });
+
+        // Always save if the ORDER changed (due to sort) or values changed?
+        // Simple check: compare IDs of sorted vs original goals to see if order changed.
+        const orderChanged = distributedGoals.some((g, i) => g.id !== goals[i]?.id);
+
+        if (hasChanges || orderChanged) {
+
+            setGoals(distributedGoals);
+            saveData('goals', distributedGoals);
+        } else {
+
+        }
+    }, [calculateFlexibleFunds, goals]);
+
+    // Trigger distribution when financial state changes
+    useEffect(() => {
+        // We use a timeout to debounce and avoid rapid updates or loops
+        const timer = setTimeout(() => {
+            distributeFundsToGoals();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [transactions, income, incomeStartDate, goals.length, goals.map(g => g.targetAmount).join(','), distributeFundsToGoals]);
+    // ^ Deep check on goal targets/length to avoid loop on 'currentAmount' update
+
 
     const { user } = useAuth();
 
@@ -145,7 +296,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const processQueue = useCallback(async () => {
         if (!user || syncQueue.length === 0) return;
 
-        console.log('Processing sync queue...', syncQueue.length);
+
         const queueCopy = [...syncQueue];
         const remainingQueue: SyncAction[] = [];
 
@@ -204,9 +355,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         ({ error } = await supabase.from('user_settings').upsert({ key: 'dismissedWarnings', value: JSON.stringify(action.payload), user_id: user.id }));
                         break;
                     case 'UPDATE_ACHIEVEMENTS':
-                        ({ error } = await supabase.from('achievements').upsert(
-                            action.payload.map((a: Achievement) => ({ ...toSupabaseAchievement(a), user_id: user.id }))
-                        ));
                         break;
                 }
             } catch (e: any) {
@@ -330,6 +478,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const spent = currentTransactions
             .filter(t => t.type === 'expense' && new Date(t.date) >= monthStart && new Date(t.date) <= monthEnd)
             .filter(t => !(t.isLent && t.isPaidBack))
+            .filter(t => !t.excludeFromBudget)
             .reduce((sum, t) => sum + t.amount, 0);
 
         const percentage = (spent / currentBudget) * 100;
@@ -362,7 +511,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         oneYearFromNow.setFullYear(now.getFullYear() + 1);
 
         const recurring = currentTransactions.filter(t => t.isRecurring && t.nextOccurrence);
-        console.log(`[Recurring] Processing ${recurring.length} recurring candidates from ${currentTransactions.length} total.`);
+
         let hasChanges = false;
         let updatedTransactions = [...currentTransactions];
 
@@ -373,8 +522,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             // While next occurrence is within the next year
             while (nextDate <= oneYearFromNow) {
                 hasChanges = true;
-                console.log(`[Recurring] Generating transaction for ${t.description} on ${nextDate.toISOString()}`);
-                console.log(`[Recurring] Parent ID: ${t.id}, Next Date: ${nextDate.toISOString()}`);
+
 
                 // 1. Create new transaction instance
                 const newTx: Transaction = {
@@ -438,7 +586,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const storedIncome = await AsyncStorage.getItem('income');
             const storedIncomeStartDate = await AsyncStorage.getItem('incomeStartDate');
             const storedCurrency = await AsyncStorage.getItem('currency');
+
             const storedAchievements = await AsyncStorage.getItem('achievements');
+            const storedGoals = await AsyncStorage.getItem('goals');
 
             const storedDismissedWarnings = await AsyncStorage.getItem('dismissedWarnings');
             const storedQueue = await AsyncStorage.getItem('syncQueue');
@@ -462,6 +612,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (storedIncomeStartDate) setIncomeStartDateState(storedIncomeStartDate);
             if (storedCurrency) setCurrencyState(storedCurrency);
             if (storedAchievements) setAchievements(JSON.parse(storedAchievements));
+            if (storedGoals) setGoals(JSON.parse(storedGoals));
             if (storedDismissedWarnings) setDismissedWarnings(JSON.parse(storedDismissedWarnings));
 
             if (user) {
@@ -571,7 +722,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Trigger recurring processing
         if (newTransaction.isRecurring) {
-            console.log('[Add] Triggering recurring processing for new transaction');
+
             processRecurringTransactions(updated);
         }
 
@@ -817,6 +968,42 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     }, [user, isOffline]);
 
+    const addGoal = useCallback((goalData: Omit<SavingsGoal, 'id' | 'currentAmount' | 'isCompleted'>) => {
+        const { priority, ...rest } = goalData;
+        const newGoal: SavingsGoal = {
+            id: Date.now().toString(),
+            currentAmount: 0,
+            isCompleted: false,
+            // If priority is not passed (e.g. from existing calls not updated yet?), default to end of list
+            priority: (priority !== undefined) ? priority : (goals.length + 1),
+            ...rest
+        };
+        const updatedGoals = [...goals, newGoal];
+        // Ensure strictly sorted? Or just append?
+        // distributeFundsToGoals will handle sorting for funding logic.
+        // It's good to keep consistent.
+
+        setGoals(updatedGoals);
+        saveData('goals', updatedGoals);
+    }, [goals]);
+
+    const updateGoal = useCallback((id: string, updates: Partial<SavingsGoal>) => {
+        setGoals(prev => {
+            const updated = prev.map(g => g.id === id ? { ...g, ...updates } : g);
+            saveData('goals', updated);
+            return updated;
+        });
+    }, []);
+
+    const deleteGoal = useCallback((id: string) => {
+        setGoals(prev => {
+            const updated = prev.filter(g => g.id !== id);
+            saveData('goals', updated);
+            return updated;
+        });
+    }, []);
+
+
     const updateCategory = useCallback(async (id: string, updates: Partial<Omit<Category, 'id'>>) => {
         let updatedCat: Category | undefined;
         setCategories(prev => {
@@ -830,6 +1017,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             saveData('categories', updated);
             return updated;
         });
+
         if (updatedCat && user) {
             if (isOffline) {
                 addToQueue({ type: 'UPDATE_CATEGORY', payload: updatedCat });
@@ -940,8 +1128,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setLoading(true);
         try {
             const rate = await fetchExchangeRate(currency, cur);
-            console.log(`Swapping currency: ${currency} -> ${cur}, Rate: ${rate}`);
-            console.log(`Old Budget: ${budget}, Expected New: ${budget * rate}`);
+
 
             if (!rate || isNaN(rate)) {
                 throw new Error('Invalid exchange rate');
@@ -951,7 +1138,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const newBudget = Math.round(budget * rate);
             const newIncome = Math.round(income * rate);
 
-            console.log(`New Budget: ${newBudget}`);
+
 
             setBudgetState(newBudget);
             setIncomeState(newIncome);
@@ -1078,6 +1265,10 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 newlyUnlockedAchievement,
                 clearNewlyUnlockedAchievement,
                 isOffline,
+                goals,
+                addGoal,
+                updateGoal,
+                deleteGoal,
             }}
         >
             {children}

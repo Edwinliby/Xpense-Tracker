@@ -1,48 +1,89 @@
--- Add user_id column to transactions if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'transactions' AND column_name = 'user_id') THEN
-        ALTER TABLE transactions ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-    END IF;
-END $$;
+-- Consolidated Supabase Setup for Expense Tracker
+-- This file combines the original schema and all subsequent migrations into a single setup script.
 
--- Add user_id column to categories if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'categories' AND column_name = 'user_id') THEN
-        ALTER TABLE categories ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-    END IF;
-END $$;
+-- 1. Transactions Table
+CREATE TABLE IF NOT EXISTS transactions (
+    id TEXT PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    amount NUMERIC NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT,
+    date TIMESTAMPTZ NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('expense', 'income')),
+    deleted_at TIMESTAMPTZ,
+    is_friend_payment BOOLEAN DEFAULT FALSE,
+    is_paid_back BOOLEAN DEFAULT FALSE,
+    paid_by TEXT,
+    currency TEXT,
+    original_amount NUMERIC,
+    exchange_rate NUMERIC,
+    receipt_image TEXT,
+    
+    -- Location fields
+    latitude NUMERIC,
+    longitude NUMERIC,
+    location_name TEXT,
+    
+    -- Budget exclusion
+    exclude_from_budget BOOLEAN DEFAULT FALSE,
+    
+    -- Lent/Debt fields
+    is_lent BOOLEAN DEFAULT FALSE,
+    lent_to TEXT,
+    
+    -- Recurring fields
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurrence_interval TEXT,
+    next_occurrence TIMESTAMPTZ,
+    parent_id TEXT,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Add user_id column to user_settings if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_settings' AND column_name = 'user_id') THEN
-        ALTER TABLE user_settings ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-        -- We need to drop the old primary key and add a new one including user_id
-        ALTER TABLE user_settings DROP CONSTRAINT user_settings_pkey;
-        ALTER TABLE user_settings ADD PRIMARY KEY (key, user_id);
-    END IF;
-END $$;
+-- 2. Categories Table
+CREATE TABLE IF NOT EXISTS categories (
+    id TEXT PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    color TEXT NOT NULL,
+    is_predefined BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Add user_id column to achievements if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'achievements' AND column_name = 'user_id') THEN
-        ALTER TABLE achievements ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-        -- We need to drop the old primary key and add a new one including user_id
-        ALTER TABLE achievements DROP CONSTRAINT achievements_pkey;
-        ALTER TABLE achievements ADD PRIMARY KEY (id, user_id);
-    END IF;
-END $$;
+-- 3. Settings/User Data Table
+CREATE TABLE IF NOT EXISTS user_settings (
+    key TEXT,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (key, user_id)
+);
 
--- Enable RLS (idempotent)
+-- 4. Achievements Table
+CREATE TABLE IF NOT EXISTS achievements (
+    id TEXT,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    unlocked_at TIMESTAMPTZ,
+    progress INTEGER DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (id, user_id)
+);
+
+-- 5. Enable Row Level Security (RLS)
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 
--- Re-create policies (drop first to avoid errors)
+-- 6. Create RLS Policies
+-- We accept that these might fail if they already exist, but for a clean setup script, we define them.
+-- To be safe against "policy already exists" errors, we drop them first if we can, or just expect the user to run this on a fresh DB.
+-- For robustness, I will include DROP POLICY IF EXISTS.
+
+-- Transactions Policies
 DROP POLICY IF EXISTS "Users can view their own transactions" ON transactions;
 CREATE POLICY "Users can view their own transactions" ON transactions FOR SELECT USING (auth.uid() = user_id);
 

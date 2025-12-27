@@ -3,6 +3,7 @@ import { DayOfWeekWidget } from '@/components/analytics/DayOfWeekWidget';
 import { FinancialKPIsWidget } from '@/components/analytics/FinancialKPIsWidget';
 import { MonthComparisonWidget } from '@/components/analytics/MonthComparisonWidget';
 import { QuickInsightsWidget } from '@/components/analytics/QuickInsightsWidget';
+import { SpendingHeatmapWidget } from '@/components/analytics/SpendingHeatmapWidget';
 import { SpendingTrendsWidget } from '@/components/analytics/SpendingTrendsWidget';
 import { TopCategoriesWidget } from '@/components/analytics/TopCategoriesWidget';
 import { useStyles } from '@/constants/Styles';
@@ -12,13 +13,15 @@ import { useExpense } from '@/store/expenseStore';
 import { format } from 'date-fns';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
+import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Download } from 'lucide-react-native';
+import { Download, Map } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AnalyticsScreen() {
+    const router = useRouter();
     const Styles = useStyles();
     const Colors = useThemeColor();
     const [refreshing, setRefreshing] = useState(false);
@@ -117,18 +120,28 @@ export default function AnalyticsScreen() {
         <SafeAreaView style={Styles.container}>
             <View style={[Styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 20 }]}>
                 <Text style={[Styles.title, { marginBottom: 0, fontSize: 28 }]}>Analytics</Text>
-                <TouchableOpacity
-                    style={styles.exportButton}
-                    onPress={handleExportPDF}
-                    disabled={isGeneratingPdf}
-                    activeOpacity={0.7}
-                >
-                    {isGeneratingPdf ? (
-                        <ActivityIndicator size="small" color={Colors.primary} />
-                    ) : (
-                        <Download size={20} color={Colors.primary} />
-                    )}
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                        style={styles.exportButton}
+                        onPress={() => router.push('/map')}
+                        activeOpacity={0.7}
+                    >
+                        <Map size={20} color={Colors.primary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.exportButton}
+                        onPress={handleExportPDF}
+                        disabled={isGeneratingPdf}
+                        activeOpacity={0.7}
+                    >
+                        {isGeneratingPdf ? (
+                            <ActivityIndicator size="small" color={Colors.primary} />
+                        ) : (
+                            <Download size={20} color={Colors.primary} />
+                        )}
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView
@@ -146,6 +159,9 @@ export default function AnalyticsScreen() {
 
                 {/* Financial KPIs */}
                 <FinancialKPIsWidget />
+
+                {/* Calendar Heatmap */}
+                <SpendingHeatmapWidget />
 
                 {/* Month Comparison */}
                 <MonthComparisonWidget />

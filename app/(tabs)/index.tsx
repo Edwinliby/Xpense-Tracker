@@ -6,8 +6,9 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
-import { endOfMonth, format, getDaysInMonth, isWithinInterval, startOfMonth, subMonths } from 'date-fns';
-import { AlertCircle, ChevronLeft, ChevronRight, Wallet } from 'lucide-react-native';
+import { differenceInMonths, endOfMonth, format, getDaysInMonth, isWithinInterval, parseISO, startOfMonth, subMonths } from 'date-fns';
+import { router } from 'expo-router';
+import { AlertCircle, ChevronLeft, ChevronRight, Search, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,13 +19,47 @@ export default function DashboardScreen() {
   const Styles = useStyles();
   const Colors = useThemeColor();
   const { transactions, budget, income, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement } = useExpense();
-  const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedBarIndex, setSelectedBarIndex] = useState<number>(2);
-  const [selectedBar, setSelectedBar] = useState<{ label: string; value: number } | null>(null);
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
 
   const now = useMemo(() => new Date(), []);
+
+  // Determine the start date for the monthly view history
+  const historyStartDate = useMemo(() => {
+    if (incomeStartDate) {
+      return parseISO(incomeStartDate);
+    }
+    if (transactions.length > 0) {
+      // Find the earliest transaction date
+      const dates = transactions.map(t => new Date(t.date).getTime());
+      return new Date(Math.min(...dates));
+    }
+    // Default to 2 months ago if no data
+    return subMonths(now, 2);
+  }, [incomeStartDate, transactions, now]);
+
+  // Calculate total months to display (from history start to now)
+  const numberOfMonths = useMemo(() => {
+    const months = differenceInMonths(now, historyStartDate);
+    return Math.max(months, 2); // Ensure at least 3 months (0 to 2) are shown
+  }, [now, historyStartDate]);
+
+  const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  // Initialize to the last index (current month) which corresponds to numberOfMonths
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number>(numberOfMonths);
+  const [selectedBar, setSelectedBar] = useState<{ label: string; value: number; year: number } | null>(null);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+
+  // Update selectedBarIndex when numberOfMonths changes (e.g. new transactions or first load)
+  // taking care not to reset user selection if they are browsing, unless it's out of bounds?
+  // For now, simpler to snap to latest if the range expands significantly or on mount.
+  // Using a ref to track if it's the first load could help, but simply syncing to end if unset or creating a new default is okay.
+  useEffect(() => {
+    // If the current index is out of sync (e.g. range grew), we might want to keep the "relative" month or reset to now.
+    // Let's reset to "now" (end of array) to ensure they see the current month by default.
+    setSelectedBarIndex(numberOfMonths);
+  }, [numberOfMonths]);
+
+
 
   // --- Data Helpers ---
   const getSpentInInterval = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean }) => {
@@ -58,19 +93,25 @@ export default function DashboardScreen() {
     return getSpentInInterval(start, end, options);
   }, [isAfterIncomeStart, getSpentInInterval]);
 
-  // --- Monthly Data (Last 3 Months) ---
-  const monthlyData = useMemo(() => [2, 1, 0].map((subtract) => {
-    const date = subMonths(now, subtract);
-    const monthStart = startOfMonth(date);
-    const monthEnd = endOfMonth(date);
-    const value = getEffectiveSpent(monthStart, monthEnd);
-    return {
-      value,
-      label: format(monthStart, 'MMM'),
-      frontColor: subtract === 0 ? Colors.primary : Colors.textSecondary,
-      gradientColor: subtract === 0 ? Colors.primaryHighlight : Colors.surfaceHighlight,
-    };
-  }), [now, getEffectiveSpent, Colors.primary, Colors.textSecondary, Colors.primaryHighlight, Colors.surfaceHighlight]);
+  // --- Monthly Data (Dynamic History) ---
+  const monthlyData = useMemo(() => {
+    // Generate array [numberOfMonths, numberOfMonths-1, ..., 0]
+    const subtracts = Array.from({ length: numberOfMonths + 1 }, (_, i) => numberOfMonths - i);
+
+    return subtracts.map((subtract) => {
+      const date = subMonths(now, subtract);
+      const monthStart = startOfMonth(date);
+      const monthEnd = endOfMonth(date);
+      const value = getEffectiveSpent(monthStart, monthEnd);
+      return {
+        value,
+        label: format(monthStart, 'MMM'),
+        year: monthStart.getFullYear(),
+        frontColor: subtract === 0 ? Colors.primary : Colors.textSecondary,
+        gradientColor: subtract === 0 ? Colors.primaryHighlight : Colors.surfaceHighlight,
+      };
+    });
+  }, [now, numberOfMonths, getEffectiveSpent, Colors.primary, Colors.textSecondary, Colors.primaryHighlight, Colors.surfaceHighlight]);
 
   // Sync selectedBar with selectedBarIndex
   useEffect(() => {
@@ -82,7 +123,11 @@ export default function DashboardScreen() {
   // Determine month range for recent transactions
   const monthRange = useMemo(() => {
     if (selectedBar && viewMode === 'monthly') {
-      const subtract = 2 - selectedBarIndex;
+      // selectedBarIndex 0 = Oldest
+      // selectedBarIndex = length-1 = Current (subtract 0)
+      // We need to find the subtract value.
+      // subtract = numberOfMonths - selectedBarIndex
+      const subtract = numberOfMonths - selectedBarIndex;
       const date = subMonths(now, subtract);
       return { start: startOfMonth(date), end: endOfMonth(date) };
     }
@@ -268,18 +313,31 @@ export default function DashboardScreen() {
             </Text>
           </View>
 
-          <View style={[styles.toggleContainer, { backgroundColor: Colors.surfaceHighlight }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={[styles.toggleContainer, { backgroundColor: Colors.surfaceHighlight, marginBottom: 0 }]}>
+              <TouchableOpacity
+                style={[styles.toggleButton, viewMode === 'monthly' && { backgroundColor: Colors.primary }]}
+                onPress={() => setViewMode('monthly')}
+              >
+                <Text style={[styles.toggleText, { color: viewMode === 'monthly' ? '#FFF' : Colors.textSecondary }]}>Month</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleButton, viewMode === 'yearly' && { backgroundColor: Colors.primary }]}
+                onPress={() => setViewMode('yearly')}
+              >
+                <Text style={[styles.toggleText, { color: viewMode === 'yearly' ? '#FFF' : Colors.textSecondary }]}>Year</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'monthly' && { backgroundColor: Colors.primary }]}
-              onPress={() => setViewMode('monthly')}
+              onPress={() => router.push('/search')}
+              style={{
+                padding: 10,
+                backgroundColor: Colors.surfaceHighlight,
+                borderRadius: 12
+              }}
             >
-              <Text style={[styles.toggleText, { color: viewMode === 'monthly' ? '#FFF' : Colors.textSecondary }]}>Month</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'yearly' && { backgroundColor: Colors.primary }]}
-              onPress={() => setViewMode('yearly')}
-            >
-              <Text style={[styles.toggleText, { color: viewMode === 'yearly' ? '#FFF' : Colors.textSecondary }]}>Year</Text>
+              <Search size={20} color={Colors.text} />
             </TouchableOpacity>
           </View>
         </View>
@@ -379,7 +437,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
 
             <Text style={[styles.periodText, { color: Colors.text }]}>
-              {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${now.getFullYear()}` : 'Current Month')}
+              {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${selectedBar.year}` : 'Current Month')}
             </Text>
 
             <TouchableOpacity
@@ -463,7 +521,7 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 20,
     flexDirection: 'row',

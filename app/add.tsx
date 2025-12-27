@@ -9,9 +9,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { addMonths, format } from 'date-fns';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Icons from 'lucide-react-native';
-import { Calendar, Camera, Image as ImageIcon, RotateCw, Trash2, X } from 'lucide-react-native';
+import { Calendar, Camera, Image as ImageIcon, MapPin, RotateCw, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,6 +40,12 @@ export default function AddTransactionScreen() {
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [isRecurring, setIsRecurring] = useState(false);
     const [excludeFromBudget, setExcludeFromBudget] = useState(false);
+
+    // Location State
+    const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [locationName, setLocationName] = useState<string>('');
+    const [isLocationEnabled, setIsLocationEnabled] = useState(false);
+    const [isLocationLoading, setIsLocationLoading] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -71,6 +78,15 @@ export default function AddTransactionScreen() {
                 setIsRecurring(getParam(params.isRecurring) === 'true');
                 setExcludeFromBudget(getParam(params.excludeFromBudget) === 'true');
 
+                const lat = getParam(params.latitude);
+                const lon = getParam(params.longitude);
+                if (lat && lon) {
+                    setLocation({ latitude: parseFloat(lat), longitude: parseFloat(lon) });
+                    setIsLocationEnabled(true);
+                }
+                const locName = getParam(params.locationName);
+                if (locName) setLocationName(locName);
+
             } else {
                 setAmount('');
                 setDescription('');
@@ -84,8 +100,11 @@ export default function AddTransactionScreen() {
                 setReceiptImage(null);
                 setIsRecurring(false);
                 setExcludeFromBudget(false);
+                setLocation(null);
+                setLocationName('');
+                setIsLocationEnabled(false);
             }
-        }, [params.id, params.amount, params.description, params.category, params.type, params.date, params.receiptImage, params.isFriendPayment, params.paidBy, params.isLent, params.lentTo, params.isRecurring, params.excludeFromBudget, isEditing])
+        }, [params.id, params.amount, params.description, params.category, params.type, params.date, params.receiptImage, params.isFriendPayment, params.paidBy, params.isLent, params.lentTo, params.isRecurring, params.excludeFromBudget, params.latitude, params.longitude, params.locationName, isEditing])
     );
 
     const handleSave = useCallback(() => {
@@ -136,6 +155,9 @@ export default function AddTransactionScreen() {
             recurrenceInterval: isRecurring ? 'monthly' as const : undefined,
             nextOccurrence: isRecurring ? addMonths(date, 1).toISOString() : undefined,
             excludeFromBudget,
+            latitude: location?.latitude,
+            longitude: location?.longitude,
+            locationName: locationName || undefined,
         };
 
         try {
@@ -150,7 +172,48 @@ export default function AddTransactionScreen() {
             console.error("Failed to save transaction:", error);
             Alert.alert('Error', 'Failed to save transaction');
         }
-    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring, excludeFromBudget]);
+    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring, excludeFromBudget, location, locationName]);
+
+    const handleGetLocation = async () => {
+        setIsLocationLoading(true);
+        // Optimistically set enabled
+        setIsLocationEnabled(true);
+
+        try {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission denied', 'Location permission is required to tag expenses.');
+                setIsLocationLoading(false);
+                setIsLocationEnabled(false);
+                return;
+            }
+
+            let locationResult = await Location.getCurrentPositionAsync({});
+            setLocation({
+                latitude: locationResult.coords.latitude,
+                longitude: locationResult.coords.longitude
+            });
+
+            // Reverse geocode
+            let reverseGeocode = await Location.reverseGeocodeAsync({
+                latitude: locationResult.coords.latitude,
+                longitude: locationResult.coords.longitude
+            });
+
+            if (reverseGeocode.length > 0) {
+                const address = reverseGeocode[0];
+                const name = address.name || address.street || address.city || 'Unknown Location';
+                setLocationName(name);
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Failed to get location. Please ensure GPS is enabled.');
+            setIsLocationEnabled(false);
+            setLocation(null);
+        } finally {
+            setIsLocationLoading(false);
+        }
+    };
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -444,6 +507,33 @@ export default function AddTransactionScreen() {
                                 value={isRecurring}
                                 onValueChange={setIsRecurring}
                                 trackColor={{ false: Colors.border, true: Colors.primary }}
+                            />
+                        </View>
+
+                        {/* Location */}
+                        <View style={[styles.optionRow, { backgroundColor: Colors.surface }]}>
+                            <View style={styles.optionLeft}>
+                                <MapPin size={20} color={location ? Colors.primary : Colors.textSecondary} />
+                                <View>
+                                    <Text style={[styles.optionText, { color: Colors.text }]}>Location</Text>
+                                    <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>
+                                        {location ? (locationName || 'Location Added') : 'None attached'}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Switch
+                                value={isLocationEnabled}
+                                onValueChange={(val) => {
+                                    if (val) {
+                                        handleGetLocation();
+                                    } else {
+                                        setIsLocationEnabled(false);
+                                        setLocation(null);
+                                        setLocationName('');
+                                    }
+                                }}
+                                trackColor={{ false: Colors.border, true: Colors.primary }}
+                                disabled={isLocationLoading}
                             />
                         </View>
 

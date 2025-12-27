@@ -37,6 +37,7 @@ export default function SettingsScreen() {
         deleteCategory,
         transactions,
         loading,
+        purgeData,
     } = useExpense();
 
     const [budgetInput, setBudgetInput] = useState('');
@@ -186,6 +187,24 @@ export default function SettingsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         await signOut();
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleResetData = () => {
+        Alert.alert(
+            'Reset App Data',
+            'This will permanently delete ALL transactions, categories, and settings. This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Reset Everything',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await purgeData();
+                        Alert.alert('Success', 'App data has been reset.');
                     }
                 }
             ]
@@ -372,6 +391,16 @@ export default function SettingsScreen() {
                             </View>
                             <Text style={[styles.menuItemText, { color: Colors.text }]}>Trash Bin</Text>
                             <Icons.ChevronRight size={20} color={Colors.textSecondary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.menuItem, { borderBottomColor: Colors.border, borderBottomWidth: 1 }]}
+                            onPress={handleResetData}
+                        >
+                            <View style={[styles.menuIconBox, { backgroundColor: '#FEE2E2' }]}>
+                                <Icons.RefreshCw size={20} color={Colors.danger} />
+                            </View>
+                            <Text style={[styles.menuItemText, { color: Colors.danger }]}>Reset App Data</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity

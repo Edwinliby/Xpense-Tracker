@@ -3,11 +3,13 @@ import { fetchExchangeRate } from '@/lib/currency';
 import { fromSupabaseAchievement, fromSupabaseCategory, fromSupabaseTransaction, supabase, toSupabaseAchievement, toSupabaseCategory, toSupabaseTransaction } from '@/lib/supabase';
 import { Achievement, ACHIEVEMENTS } from '@/types/achievements';
 import { Category, Transaction, TransactionType } from '@/types/expense';
+import { BudgetWidget } from '@/widgets/BudgetWidget';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { addMonths } from 'date-fns';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import { getWidgetInfo, requestWidgetUpdate } from 'react-native-android-widget';
 
 export interface SavingsGoal {
     id: string;
@@ -43,6 +45,7 @@ interface ExpenseContextType {
     setBudget: (amount: number) => void;
     setIncome: (amount: number) => void;
     setIncomeStartDate: (date: string | null) => void;
+    purgeData: () => Promise<void>;
     loading: boolean;
     currency: string;
     setCurrency: (currency: string) => Promise<void>;
@@ -240,7 +243,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // ^ Deep check on goal targets/length to avoid loop on 'currentAmount' update
 
 
-    const { user } = useAuth();
 
     const getCurrencySymbol = (code: string) => {
         switch (code) {
@@ -254,6 +256,38 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
     const currencySymbol = useMemo(() => getCurrencySymbol(currency), [currency]);
+
+    // --- Android Widget Update ---
+    useEffect(() => {
+        if (Platform.OS !== 'android') return;
+
+        const updateWidgets = async () => {
+            try {
+                const availableFunds = calculateFlexibleFunds();
+                const widgetInfos = await getWidgetInfo('BudgetWidget');
+
+                for (const info of widgetInfos) {
+                    await requestWidgetUpdate({
+                        ...info,
+                        widgetName: 'BudgetWidget',
+                        renderWidget: () => <BudgetWidget remainingAmount={`${currencySymbol}${availableFunds.toFixed(2)}`} />,
+                    });
+                }
+            } catch (e) {
+                // Widget might not be installed or other error
+                console.log('Widget update failed', e);
+            }
+        };
+
+        // Debounce slightly to avoid rapid updates during bulk ops
+        const timer = setTimeout(updateWidgets, 1000);
+        return () => clearTimeout(timer);
+    }, [transactions, income, incomeStartDate, currencySymbol, calculateFlexibleFunds]);
+
+
+    const { user } = useAuth();
+
+
 
     // Auto‑delete trash items older than 3 minutes
     const trashRef = useRef(trash);
@@ -383,6 +417,111 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
         return () => unsubscribe();
     }, [processQueue]);
+
+    // Constructive Sync Trigger
+    useEffect(() => {
+        if (!isOffline && syncQueue.length > 0) {
+            processQueue();
+        }
+    }, [syncQueue, isOffline, processQueue]);
+
+    // Realtime Subscription
+    useEffect(() => {
+        if (!user || isOffline) return;
+
+        const channel = supabase
+            .channel('transactions_realtime')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
+                (payload) => {
+                    console.log('Realtime change received!', payload);
+                    const { eventType, new: newRecord, old: oldRecord } = payload;
+
+                    if (eventType === 'INSERT') {
+                        const transaction = fromSupabaseTransaction(newRecord);
+                        if (!transaction.deletedAt) {
+                            setTransactions(prev => {
+                                const exists = prev.find(t => t.id === transaction.id);
+                                if (exists) return prev;
+                                const updated = [transaction, ...prev];
+                                saveData('transactions', updated);
+                                return updated;
+                            });
+                        } else {
+                            setTrash(prev => {
+                                const exists = prev.find(t => t.id === transaction.id);
+                                if (exists) return prev;
+                                const updated = [transaction, ...prev];
+                                saveData('trash', updated);
+                                return updated;
+                            });
+                        }
+                    } else if (eventType === 'UPDATE') {
+                        const updatedTx = fromSupabaseTransaction(newRecord);
+
+                        setTransactions(prev => {
+                            const exists = prev.find(t => t.id === updatedTx.id);
+                            if (updatedTx.deletedAt) {
+                                // It was soft-deleted
+                                if (exists) {
+                                    const next = prev.filter(t => t.id !== updatedTx.id);
+                                    saveData('transactions', next);
+                                    return next;
+                                }
+                                return prev;
+                            } else {
+                                // It's active
+                                if (exists) {
+                                    const next = prev.map(t => t.id === updatedTx.id ? updatedTx : t);
+                                    saveData('transactions', next);
+                                    return next;
+                                } else {
+                                    // Was in trash or new?
+                                    const next = [updatedTx, ...prev];
+                                    saveData('transactions', next);
+                                    return next;
+                                }
+                            }
+                        });
+
+                        setTrash(prev => {
+                            if (updatedTx.deletedAt) {
+                                // Add to trash if not exists
+                                const exists = prev.find(t => t.id === updatedTx.id);
+                                const next = exists ? prev.map(t => t.id === updatedTx.id ? updatedTx : t) : [updatedTx, ...prev];
+                                saveData('trash', next);
+                                return next;
+                            } else {
+                                // Remove from trash
+                                const next = prev.filter(t => t.id !== updatedTx.id);
+                                saveData('trash', next);
+                                return next;
+                            }
+                        });
+
+                    } else if (eventType === 'DELETE') {
+                        // Hard delete (e.g. purge or permanent delete)
+                        const deletedId = oldRecord.id;
+                        setTransactions(prev => {
+                            const next = prev.filter(t => t.id !== deletedId);
+                            saveData('transactions', next);
+                            return next;
+                        });
+                        setTrash(prev => {
+                            const next = prev.filter(t => t.id !== deletedId);
+                            saveData('trash', next);
+                            return next;
+                        });
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, isOffline]);
 
     const checkAchievements = useCallback((allTransactions: Transaction[]) => {
         setAchievements(prev => {
@@ -601,9 +740,11 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             if (storedTransactions) {
                 const parsed = JSON.parse(storedTransactions);
-                setTransactions(parsed);
+                // Ensure no deleted items are loaded from local storage
+                const active = parsed.filter((t: Transaction) => !t.deletedAt);
+                setTransactions(active);
                 // Process recurring transactions from local storage too
-                processRecurringTransactions(parsed);
+                processRecurringTransactions(active);
             }
             if (storedTrash) setTrash(JSON.parse(storedTrash));
             if (storedCategories) setCategories(JSON.parse(storedCategories));
@@ -625,13 +766,39 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
                     // Merge pending transactions from queue (Optimistic UI)
                     // This prevents items from disappearing if they exist locally but haven't synced yet
+
                     if (currentQueue.length > 0) {
+                        // 1. Handle Pending Deletes (Prevent resurrection)
+                        const pendingDeletes = currentQueue
+                            .filter(a => a.type === 'DELETE_TRANSACTION')
+                            .map(a => (a.payload as Transaction).id);
+
+                        if (pendingDeletes.length > 0) {
+                            active = active.filter(t => !pendingDeletes.includes(t.id));
+                        }
+
+                        // 2. Handle Pending Updates (Prevent stale data overwrites)
+                        const pendingUpdates = currentQueue
+                            .filter(a => a.type === 'UPDATE_TRANSACTION')
+                            .map(a => a.payload as Transaction);
+
+                        if (pendingUpdates.length > 0) {
+                            active = active.map(t => {
+                                const update = pendingUpdates.find(u => u.id === t.id);
+                                return update ? { ...t, ...update } : t;
+                            });
+                        }
+
+                        // 3. Handle Pending Adds
                         const pendingAdds = currentQueue
                             .filter(a => a.type === 'ADD_TRANSACTION')
                             .map(a => a.payload as Transaction);
 
-                        // Add only if not already in remote list
-                        const uniquePending = pendingAdds.filter(p => !active.some(r => r.id === p.id));
+                        // Add only if not already in remote list (and ensure not in pending deletes)
+                        const uniquePending = pendingAdds.filter(p =>
+                            !active.some(r => r.id === p.id) &&
+                            !pendingDeletes.includes(p.id)
+                        );
                         active = [...uniquePending, ...active];
                     }
 
@@ -652,8 +819,20 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         saveData('categories', parsed);
                     } else {
                         // Push defaults if remote is empty
-                        const { error } = await supabase.from('categories').upsert(categories.map(c => ({ ...toSupabaseCategory(c), user_id: user.id })));
-                        if (error) console.error('Failed to push default categories', error);
+                        // Generate new unique IDs for this user's default categories to avoid Primary Key collisions
+                        const defaultsWithIds = defaultCategories.map(c => ({
+                            ...c,
+                            id: Date.now().toString() + Math.random().toString().slice(2, 5), // Unique ID per user
+                        }));
+                        const { error } = await supabase.from('categories').upsert(defaultsWithIds.map(c => ({ ...toSupabaseCategory(c), user_id: user.id })));
+
+                        // Update local state to match these new IDs so we stay in sync
+                        if (!error) {
+                            setCategories(defaultsWithIds);
+                            saveData('categories', defaultsWithIds);
+                        } else {
+                            console.error('Failed to push default categories', error);
+                        }
                     }
                 }
 
@@ -1229,6 +1408,41 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setNewlyUnlockedAchievement(null);
     }, []);
 
+    const purgeData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // 1. Clear Local State
+            setTransactions([]);
+            setTrash([]);
+            setCategories(defaultCategories);
+            setBudgetState(0);
+            setIncomeState(0);
+            setSyncQueue([]);
+            setAchievements(ACHIEVEMENTS.map(a => ({ ...a, progress: 0 })));
+
+            // 2. Clear AsyncStorage
+            await AsyncStorage.multiRemove([
+                'transactions', 'trash', 'categories', 'budget', 'income',
+                'incomeStartDate', 'currency', 'achievements', 'goals',
+                'dismissedWarnings', 'syncQueue'
+            ]);
+
+            // 3. Clear Supabase (if online)
+            if (user && !isOffline) {
+                await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+                await supabase.from('categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                await supabase.from('user_settings').delete().neq('user_id', '00000000-0000-0000-0000-000000000000'); // Delete all matching user
+            }
+        } catch (e) {
+            console.error('Purge failed', e);
+            Alert.alert('Error', 'Failed to reset data');
+        } finally {
+            setLoading(false);
+        }
+    }, [user, isOffline]);
+
+
+
 
 
 
@@ -1254,6 +1468,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 setBudget,
                 setIncome,
                 setIncomeStartDate,
+                purgeData,
                 loading,
                 currency,
                 setCurrency,

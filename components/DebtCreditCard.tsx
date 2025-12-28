@@ -63,7 +63,7 @@ export const DebtCreditCard: React.FC<DebtCreditCardProps> = ({
                                 </View>
                             </View>
 
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                 <Text style={styles.amountText}>{currencySymbol}{t.amount.toLocaleString()}</Text>
                                 <TouchableOpacity
                                     style={styles.settleBtn}
@@ -90,14 +90,17 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold',
         marginLeft: 20,
         marginBottom: 12,
     },
     card: {
-        marginHorizontal: 20,
+        marginHorizontal: 16,
         borderRadius: 24,
         padding: 20,
+        // Make it pop a bit more with border
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     header: {
         flexDirection: 'row',
@@ -105,18 +108,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.2)',
+        borderBottomColor: 'rgba(255,255,255,0.15)',
         paddingBottom: 16,
     },
     label: {
         color: 'rgba(255,255,255,0.9)',
-        fontSize: 14,
-        fontFamily: 'Geist-SemiBold', // Changed from fontWeight: '600'
+        fontSize: 13,
+        fontFamily: 'Geist-Medium',
+        letterSpacing: 0.2,
     },
     totalValue: {
         color: '#FFF',
-        fontSize: 22,
-        fontFamily: 'Geist-Bold', // Changed from fontWeight: '800'
+        fontSize: 24,
+        fontFamily: 'Geist-Bold',
+        letterSpacing: -0.5,
     },
     list: {
         gap: 12,
@@ -125,11 +130,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.25)', // Increased contrast/opacity
+        backgroundColor: 'rgba(255,255,255,0.15)', // Lighter, more glass-like
         padding: 12,
-        borderRadius: 16,
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)', // Subtle border definition
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     info: {
         flexDirection: 'row',
@@ -137,47 +142,51 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 14, // Squircle-ish
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.6)', // Sharper border
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
     avatarText: {
         color: '#FFF',
-        fontFamily: 'Geist-Bold', // Changed from fontWeight: '700'
+        fontFamily: 'Geist-Bold',
         fontSize: 16,
     },
     name: {
         color: '#FFF',
-        fontFamily: 'Geist-Medium', // Changed from fontWeight: '700'
-        fontSize: 15,
+        fontFamily: 'Geist-SemiBold',
+        fontSize: 14,
+        marginBottom: 2,
     },
     date: {
-        color: 'rgba(255,255,255,0.95)', // Much more visible date
-        fontSize: 12,
-        fontFamily: 'Geist-Medium', // Changed from fontWeight: '500'
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 11,
+        fontFamily: 'Geist-Regular',
     },
     amountText: {
         color: '#FFF',
-        fontFamily: 'Geist-SemiBold', // Changed from fontWeight: '700'
+        fontFamily: 'Geist-Bold',
         fontSize: 15,
+        marginRight: 4
     },
     settleBtn: {
         backgroundColor: '#FFF',
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 12,
-        shadowColor: '#000',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        shadowColor: 'rgba(0,0,0,0.2)',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 1,
         shadowRadius: 4,
         elevation: 2,
     },
     settleText: {
-        fontSize: 12,
-        fontWeight: '700',
+        fontSize: 11,
+        fontFamily: 'Geist-Bold',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 });

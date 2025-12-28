@@ -50,21 +50,7 @@
           "locationWhenInUsePermission": "We need your location to tag your expenses."
         }
       ],
-      [
-        "react-native-android-widget",
-        {
-          "widgets": [
-            {
-              "name": "BudgetWidget",
-              "label": "Budget Tracker",
-              "minWidth": "160dp",
-              "minHeight": "80dp",
-              "description": "Shows remaining budget and quick add button",
-              "previewImage": "./assets/widget-preview.png"
-            }
-          ]
-        }
-      ],
+
       "expo-web-browser"
     ],
     "experiments": {

@@ -106,30 +106,30 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
                     {/* ... header ... */}
                     <View style={styles.header}>
                         <Text style={[styles.title, { color: Colors.text }]}>
-                            {initialGoal ? 'Edit Savings Goal' : 'New Savings Goal'}
+                            {initialGoal ? 'Edit Goal' : 'New Goal'}
                         </Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close" size={24} color={Colors.text} />
+                        <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: Colors.surfaceHighlight }]}>
+                            <Ionicons name="close" size={20} color={Colors.text} />
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView contentContainerStyle={styles.scrollContent}>
+                    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: Colors.textSecondary }]}>Goal Name</Text>
+                            <Text style={[styles.label, { color: Colors.textSecondary }]}>NAME</Text>
                             <TextInput
-                                style={[styles.input, { backgroundColor: Colors.surfaceHighlight, color: Colors.text }]}
-                                placeholder="e.g. New Laptop"
+                                style={[styles.input, { backgroundColor: Colors.surfaceHighlight, color: Colors.text, borderColor: Colors.surfaceHighlight }]}
+                                placeholder="e.g. Dream Vacation"
                                 placeholderTextColor={Colors.tabIconDefault}
                                 value={name}
                                 onChangeText={setName}
                             />
                         </View>
 
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <View style={{ flexDirection: 'row', gap: 16 }}>
                             <View style={[styles.inputGroup, { flex: 1 }]}>
-                                <Text style={[styles.label, { color: Colors.textSecondary }]}>Target Amount</Text>
+                                <Text style={[styles.label, { color: Colors.textSecondary }]}>TARGET AMOUNT</Text>
                                 <TextInput
-                                    style={[styles.input, { backgroundColor: Colors.surfaceHighlight, color: Colors.text }]}
+                                    style={[styles.input, { backgroundColor: Colors.surfaceHighlight, color: Colors.text, borderColor: Colors.surfaceHighlight }]}
                                     placeholder="0.00"
                                     placeholderTextColor={Colors.tabIconDefault}
                                     keyboardType="numeric"
@@ -137,11 +137,11 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
                                     onChangeText={setTargetAmount}
                                 />
                             </View>
-                            <View style={[styles.inputGroup, { flex: 1 }]}>
-                                <Text style={[styles.label, { color: Colors.textSecondary }]}>Priority (1, 2...)</Text>
+                            <View style={[styles.inputGroup, { flex: 0.8 }]}>
+                                <Text style={[styles.label, { color: Colors.textSecondary }]}>PRIORITY</Text>
                                 <TextInput
-                                    style={[styles.input, { backgroundColor: Colors.surfaceHighlight, color: Colors.text }]}
-                                    placeholder="Auto"
+                                    style={[styles.input, { backgroundColor: Colors.surfaceHighlight, color: Colors.text, borderColor: Colors.surfaceHighlight }]}
+                                    placeholder="Top"
                                     placeholderTextColor={Colors.tabIconDefault}
                                     keyboardType="numeric"
                                     value={priority}
@@ -151,27 +151,37 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: Colors.textSecondary }]}>Color</Text>
+                            <Text style={[styles.label, { color: Colors.textSecondary }]}>COLOR TAG</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorScroll}>
                                 {COLORS.map(color => (
                                     <TouchableOpacity
                                         key={color}
-                                        style={[styles.colorOption, { backgroundColor: color }, selectedColor === color && [styles.selectedOption, { borderColor: Colors.text }]]}
+                                        style={[
+                                            styles.colorOption,
+                                            { backgroundColor: color },
+                                            selectedColor === color && styles.selectedOption
+                                        ]}
                                         onPress={() => setSelectedColor(color)}
                                     >
-                                        {selectedColor === color && <Ionicons name="checkmark" size={16} color="white" />}
+                                        {selectedColor === color && (
+                                            <Ionicons name="checkmark" size={18} color="white" />
+                                        )}
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: Colors.textSecondary }]}>Icon</Text>
+                            <Text style={[styles.label, { color: Colors.textSecondary }]}>ICON</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iconScroll}>
                                 {ICONS.map(icon => (
                                     <TouchableOpacity
                                         key={icon}
-                                        style={[styles.iconOption, { backgroundColor: Colors.surfaceHighlight }, selectedIcon === icon && { backgroundColor: selectedColor }]}
+                                        style={[
+                                            styles.iconOption,
+                                            { backgroundColor: Colors.surfaceHighlight },
+                                            selectedIcon === icon && { backgroundColor: selectedColor, transform: [{ scale: 1.1 }] }
+                                        ]}
                                         onPress={() => setSelectedIcon(icon)}
                                     >
                                         <Ionicons name={icon as any} size={24} color={selectedIcon === icon ? 'white' : Colors.textSecondary} />
@@ -180,7 +190,11 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
                             </ScrollView>
                         </View>
 
-                        <TouchableOpacity style={[styles.saveButton, { backgroundColor: selectedColor }]} onPress={handleSave}>
+                        <TouchableOpacity
+                            style={[styles.saveButton, { backgroundColor: selectedColor, shadowColor: selectedColor }]}
+                            onPress={handleSave}
+                            activeOpacity={0.8}
+                        >
                             <Text style={styles.saveButtonText}>
                                 {initialGoal ? 'Save Changes' : 'Create Goal'}
                             </Text>
@@ -201,79 +215,101 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        height: '80%',
-        padding: 20,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        height: '85%',
+        padding: 24,
+        paddingTop: 32,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 32,
     },
     title: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontFamily: 'Geist-Bold',
+        letterSpacing: -0.5,
     },
     closeButton: {
-        padding: 4,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     scrollContent: {
         paddingBottom: 40,
     },
     inputGroup: {
-        marginBottom: 20,
+        marginBottom: 24,
     },
     label: {
-        fontSize: 14,
-        marginBottom: 8,
-        fontWeight: '500',
+        fontSize: 12,
+        marginBottom: 10,
+        fontFamily: 'Geist-Bold',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
     input: {
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
+        borderRadius: 16,
+        padding: 18,
+        fontSize: 17,
+        fontFamily: 'Geist-Medium',
+        borderWidth: 1,
     },
     colorScroll: {
         paddingVertical: 4,
+        paddingRight: 20
     },
     colorOption: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 12,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        marginRight: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },
     selectedOption: {
-        borderWidth: 2,
+        borderWidth: 3,
+        borderColor: 'white',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3
     },
     iconScroll: {
         paddingVertical: 4,
+        paddingRight: 20
     },
     iconOption: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 14,
     },
     saveButton: {
-        padding: 16,
-        borderRadius: 16,
+        padding: 18,
+        borderRadius: 20,
         alignItems: 'center',
-        marginTop: 20,
+        marginTop: 24,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     saveButtonText: {
         color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
     },
     deleteButton: {
         padding: 16,
@@ -283,7 +319,7 @@ const styles = StyleSheet.create({
     },
     deleteButtonText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
     },
 });
 

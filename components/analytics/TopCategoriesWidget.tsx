@@ -47,7 +47,16 @@ export const TopCategoriesWidget: React.FC = () => {
     if (topCategoriesData.length === 0) return null;
 
     return (
-        <View style={[styles.container, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+        <View style={[
+            styles.container,
+            Styles.shadow,
+            {
+                backgroundColor: Colors.surface,
+                shadowColor: Colors.shadow,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.05)'
+            }
+        ]}>
             <Text style={[styles.title, { color: Colors.text }]}>Top Categories</Text>
 
             <View style={styles.list}>
@@ -58,7 +67,7 @@ export const TopCategoriesWidget: React.FC = () => {
                                 <View style={[styles.iconBox, { backgroundColor: item.color + '20' }]}>
                                     {(() => {
                                         const IconComponent = (Icons as any)[item.icon];
-                                        return IconComponent ? <IconComponent size={16} color={item.color} /> : null;
+                                        return IconComponent ? <IconComponent size={18} color={item.color} /> : null;
                                     })()}
                                 </View>
                                 <Text style={[styles.catName, { color: Colors.text }]}>{item.name}</Text>
@@ -87,19 +96,20 @@ export const TopCategoriesWidget: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 20,
+        padding: 24,
         marginHorizontal: 20,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 20,
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 24,
+        letterSpacing: -0.5,
     },
     list: {
         gap: 20,
     },
     row: {
-        gap: 8,
+        gap: 10,
     },
     rowHeader: {
         flexDirection: 'row',
@@ -109,37 +119,39 @@ const styles = StyleSheet.create({
     rowLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 14,
     },
     iconBox: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
+        width: 36,
+        height: 36,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
     catName: {
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
     },
     rowRight: {
         alignItems: 'flex-end',
     },
     amount: {
         fontSize: 14,
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold',
     },
     percent: {
         fontSize: 11,
+        fontFamily: 'Geist-Medium',
+        opacity: 0.7
     },
     progressBarBase: {
-        height: 6,
-        borderRadius: 3,
+        height: 8,
+        borderRadius: 4,
         width: '100%',
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        borderRadius: 3,
+        borderRadius: 4,
     },
 });

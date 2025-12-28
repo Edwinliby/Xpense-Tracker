@@ -8,7 +8,7 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { differenceInMonths, endOfMonth, format, getDaysInMonth, isWithinInterval, parseISO, startOfMonth, subMonths } from 'date-fns';
 import { router } from 'expo-router';
-import { AlertCircle, ChevronLeft, ChevronRight, Search, Wallet } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,15 +23,17 @@ export default function DashboardScreen() {
   const now = useMemo(() => new Date(), []);
 
   // Determine the start date for the monthly view history
+  // Determine the start date for the monthly view history
   const historyStartDate = useMemo(() => {
+    let dates = transactions.map(t => new Date(t.date).getTime());
     if (incomeStartDate) {
-      return parseISO(incomeStartDate);
+      dates.push(parseISO(incomeStartDate).getTime());
     }
-    if (transactions.length > 0) {
-      // Find the earliest transaction date
-      const dates = transactions.map(t => new Date(t.date).getTime());
+
+    if (dates.length > 0) {
       return new Date(Math.min(...dates));
     }
+
     // Default to 2 months ago if no data
     return subMonths(now, 2);
   }, [incomeStartDate, transactions, now]);
@@ -89,9 +91,8 @@ export default function DashboardScreen() {
   }, [incomeStartDate]);
 
   const getEffectiveSpent = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean }) => {
-    if (!isAfterIncomeStart(start)) return 0;
     return getSpentInInterval(start, end, options);
-  }, [isAfterIncomeStart, getSpentInInterval]);
+  }, [getSpentInInterval]);
 
   // --- Monthly Data (Dynamic History) ---
   const monthlyData = useMemo(() => {
@@ -192,23 +193,22 @@ export default function DashboardScreen() {
     const data = [];
     for (let i = 0; i < 12; i++) {
       const monthStart = startOfMonth(new Date(selectedYear, i, 1));
-      if (isAfterIncomeStart(monthStart)) {
-        const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
-        const value = getEffectiveSpent(monthStart, monthEnd);
-        data.push({
-          value,
-          date: format(monthStart, 'MMM'),
-          label: format(monthStart, 'MMM'),
-          dataPointText: value > 0 ? Math.round(value).toString() : '',
-          textColor: Colors.text,
-          textShiftY: -6,
-          textShiftX: -4,
-          textFontSize: 11,
-        });
-      }
+      const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
+      // Show ALL spending for the year in the chart
+      const value = getEffectiveSpent(monthStart, monthEnd);
+      data.push({
+        value,
+        date: format(monthStart, 'MMM'),
+        label: format(monthStart, 'MMM'),
+        dataPointText: value > 0 ? Math.round(value).toString() : '',
+        textColor: Colors.text,
+        textShiftY: -6,
+        textShiftX: -4,
+        textFontSize: 11,
+      });
     }
     return data;
-  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart, Colors.text]);
+  }, [selectedYear, getEffectiveSpent, Colors.text]);
 
   const currentYearSpent = useMemo(() =>
     yearlyData.reduce((acc, item) => acc + item.value, 0),
@@ -219,9 +219,35 @@ export default function DashboardScreen() {
     let total = 0;
     for (let i = 0; i < 12; i++) {
       const monthStart = startOfMonth(new Date(selectedYear, i, 1));
+      const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
+
+      // Show ALL spending for the year in total text
+      total += getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true });
+    }
+    return total;
+  }, [selectedYear, getEffectiveSpent]);
+
+  // NEW: Calculate spent ONLY for active budget months (for Budget Bar)
+  const activeYearlyBudgetSpent = useMemo(() => {
+    let total = 0;
+    for (let i = 0; i < 12; i++) {
+      const monthStart = startOfMonth(new Date(selectedYear, i, 1));
+      const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
       if (isAfterIncomeStart(monthStart)) {
-        const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
-        total += getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true });
+        total += getEffectiveSpent(monthStart, monthEnd); // Excludes 'excluded' txns
+      }
+    }
+    return total;
+  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart]);
+
+  // NEW: Calculate total spent ONLY for active budget months (for Remaining amount)
+  const activeYearlyTotalSpent = useMemo(() => {
+    let total = 0;
+    for (let i = 0; i < 12; i++) {
+      const monthStart = startOfMonth(new Date(selectedYear, i, 1));
+      const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
+      if (isAfterIncomeStart(monthStart)) {
+        total += getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true }); // Includes 'excluded' txns
       }
     }
     return total;
@@ -253,11 +279,16 @@ export default function DashboardScreen() {
 
   const currentYearSaved = useMemo(() => {
     const yearlyIncomeTransactions = transactions
-      .filter(t => t.type === 'income' && new Date(t.date).getFullYear() === selectedYear)
+      .filter(t => {
+        const date = new Date(t.date);
+        return t.type === 'income' &&
+          date.getFullYear() === selectedYear &&
+          isAfterIncomeStart(date);
+      })
       .reduce((acc, curr) => acc + curr.amount, 0);
 
-    return (annualIncome + yearlyIncomeTransactions) - currentYearTotalSpent;
-  }, [annualIncome, currentYearTotalSpent, transactions, selectedYear]);
+    return (annualIncome + yearlyIncomeTransactions) - activeYearlyTotalSpent;
+  }, [annualIncome, activeYearlyTotalSpent, transactions, selectedYear, isAfterIncomeStart]);
 
   const selectedMonthSpent = useMemo(() =>
     getEffectiveSpent(monthRange.start, monthRange.end),
@@ -300,155 +331,199 @@ export default function DashboardScreen() {
   const displaySaved = useMemo(() => viewMode === 'yearly' ? currentYearSaved : selectedMonthSaved, [viewMode, currentYearSaved, selectedMonthSaved]);
 
   return (
-    <SafeAreaView style={Styles.container}>
+    <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: Colors.background }]}>
+
+        {/* --- Header Section --- */}
+        <View style={styles.header}>
           <View>
             <Text style={[styles.greeting, { color: Colors.textSecondary }]}>Welcome back,</Text>
             <Text style={[styles.title, { color: Colors.text }]}>
-              {
-                budget > 0 && budget < displaySpent ? 'Lavish Spender' : 'Economical Man'
-              }
+              {budget > 0 && budget < displaySpent ? 'Lavish Spender' : 'Economical Man'}
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={[styles.toggleContainer, { backgroundColor: Colors.surfaceHighlight, marginBottom: 0 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={[styles.pillContainer, { backgroundColor: Colors.surfaceHighlight }]}>
               <TouchableOpacity
-                style={[styles.toggleButton, viewMode === 'monthly' && { backgroundColor: Colors.primary }]}
+                style={[styles.pillButton, viewMode === 'monthly' && { backgroundColor: Colors.primary }]}
                 onPress={() => setViewMode('monthly')}
               >
-                <Text style={[styles.toggleText, { color: viewMode === 'monthly' ? '#FFF' : Colors.textSecondary }]}>Month</Text>
+                <Text style={[styles.pillText, { color: viewMode === 'monthly' ? '#FFF' : Colors.textSecondary }]}>Month</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.toggleButton, viewMode === 'yearly' && { backgroundColor: Colors.primary }]}
+                style={[styles.pillButton, viewMode === 'yearly' && { backgroundColor: Colors.primary }]}
                 onPress={() => setViewMode('yearly')}
               >
-                <Text style={[styles.toggleText, { color: viewMode === 'yearly' ? '#FFF' : Colors.textSecondary }]}>Year</Text>
+                <Text style={[styles.pillText, { color: viewMode === 'yearly' ? '#FFF' : Colors.textSecondary }]}>Year</Text>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
               onPress={() => router.push('/search')}
-              style={{
-                padding: 10,
-                backgroundColor: Colors.surfaceHighlight,
-                borderRadius: 12
-              }}
+              style={[styles.iconButton, { backgroundColor: Colors.surfaceHighlight }]}
             >
               <Search size={20} color={Colors.text} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Main Card */}
-        <View style={[styles.mainCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View>
-              <Text style={[styles.statLabel, { color: Colors.textSecondary }]}>Total Spent</Text>
-              <Text style={[styles.statValue, { color: Colors.text }]}>{currencySymbol}{displaySpent.toLocaleString()}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.statLabel, { color: Colors.textSecondary }]}>Remaining</Text>
-              <Text style={[styles.statValue, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
-                {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
-              </Text>
-              {viewMode === 'yearly' && (
-                <Text style={{ fontSize: 10, color: Colors.textSecondary, marginTop: 2, opacity: 0.8 }}>
-                  {activeMonthsCount} Month{activeMonthsCount !== 1 ? 's' : ''} • {currencySymbol}{(displaySaved + displaySpent).toLocaleString()}
-                </Text>
-              )}
-            </View>
-          </View>
-
-          {/* Chart */}
-          <View style={styles.chartContainer}>
-            <HomeChart
-              data={viewMode === 'monthly' ? currentMonthLineData : chartData}
-              data2={viewMode === 'monthly' ? previousMonthLineData : undefined}
-              viewMode={viewMode}
-              maxValue={viewMode === 'monthly' ? maxMonthlyValue : maxYearlyValue}
-              currencySymbol={currencySymbol}
-            />
-          </View>
-
-          {/* Budget Bar */}
-          <View style={[styles.budgetWrapper, { backgroundColor: Colors.surfaceHighlight }]}>
-            <View style={styles.budgetHeaders}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Wallet size={14} color={Colors.textSecondary} />
-                <Text style={[styles.budgetLabel, { color: Colors.textSecondary }]}>
-                  {viewMode === 'monthly' ? (budget > 0 ? 'Monthly Budget' : 'Income') : (budget > 0 ? `Yearly Budget (${activeMonthsCount} Month${activeMonthsCount !== 1 ? 's' : ''})` : 'Yearly Income')}
-                </Text>
+        {/* --- Summary Cards Section --- */}
+        <View style={styles.summarySection}>
+          <View style={[styles.summaryCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <View>
+                <Text style={[styles.label, { color: Colors.textSecondary }]}>Total Spent</Text>
+                <Text style={[styles.amount, { color: Colors.text }]}>{currencySymbol}{displaySpent.toLocaleString()}</Text>
               </View>
-              <Text style={[styles.budgetTotal, { color: Colors.text }]}>
-                {currencySymbol}
-                {viewMode === 'monthly'
-                  ? (budget > 0 ? budget.toFixed(0) : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions).toFixed(0))
-                  : (budget > 0 ? (budget * activeMonthsCount).toFixed(0) : annualIncome.toFixed(0))
-                }
-              </Text>
+              {/* Remaining / Saved */}
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.label, { color: Colors.textSecondary }]}>Remaining</Text>
+                {(viewMode === 'monthly' || activeMonthsCount > 0) ? (
+                  (income > 0 && (viewMode === 'monthly' ? isAfterIncomeStart(monthRange.start) : true)) ? (
+                    <>
+                      <Text style={[styles.amount, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
+                        {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
+                      </Text>
+                      {viewMode === 'yearly' && (
+                        <Text style={{ fontSize: 10, color: Colors.textSecondary, marginTop: 2, opacity: 0.8 }}>
+                          {activeMonthsCount} Month{activeMonthsCount !== 1 ? 's' : ''} • {currencySymbol}{(displaySaved + activeYearlyTotalSpent).toLocaleString()}
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
+                      <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
+                    </View>
+                  )
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
+                    <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
+                  </View>
+                )}
+              </View>
             </View>
-            <ProgressBar
-              progress={
-                viewMode === 'monthly'
-                  ? (budget > 0 ? Math.min(selectedMonthSpent / budget, 1) : Math.min(selectedMonthSpent / ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions || 1), 1))
-                  : Math.min(currentYearSpent / (budget > 0 ? (budget * activeMonthsCount) : (annualIncome || 1)), 1)
-              }
-              color={(viewMode === 'monthly' ? (budget > 0 ? selectedMonthSpent > budget : selectedMonthSpent > ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions)) : (budget > 0 ? currentYearSpent > (budget * activeMonthsCount) : currentYearSpent > annualIncome)) ? Colors.danger : Colors.primary}
-              height={6}
-              style={{ borderRadius: 3 }}
-            />
-            {((viewMode === 'monthly' && selectedMonthSpent > (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))) ||
-              (viewMode === 'yearly' && currentYearSpent > (budget > 0 ? (budget * activeMonthsCount) : annualIncome))) ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 }}>
-                <AlertCircle size={12} color={Colors.danger} />
-                <Text style={{ color: Colors.danger, fontSize: 11, fontWeight: '600' }}>
-                  Over budget by {currencySymbol}
-                  {(viewMode === 'monthly'
-                    ? selectedMonthSpent - (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
-                    : currentYearSpent - (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
-                  ).toFixed(0)}
-                </Text>
-              </View>
-            ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, justifyContent: 'flex-end' }}>
-                <Text style={{ color: Colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
-                  {currencySymbol}
-                  {(viewMode === 'monthly'
-                    ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions)) - selectedMonthSpent
-                    : (budget > 0 ? (budget * activeMonthsCount) : annualIncome) - currentYearSpent
-                  ).toFixed(0)} left
-                </Text>
-              </View>
-            )}
-          </View>
 
-          {/* Period Selector */}
-          <View style={styles.periodSelector}>
-            <TouchableOpacity
-              onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev - 1) : setSelectedBarIndex(prev => Math.max(prev - 1, 0))}
-              style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
-              disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
-            >
-              <ChevronLeft size={20} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
-            </TouchableOpacity>
-
-            <Text style={[styles.periodText, { color: Colors.text }]}>
-              {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${selectedBar.year}` : 'Current Month')}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev + 1) : setSelectedBarIndex(prev => Math.min(prev + 1, monthlyData.length - 1))}
-              style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
-              disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
-            >
-              <ChevronRight size={20} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
-            </TouchableOpacity>
+            {/* Chart Area */}
+            <View style={styles.chartWrapper}>
+              <HomeChart
+                data={viewMode === 'monthly' ? currentMonthLineData : chartData}
+                data2={viewMode === 'monthly' ? previousMonthLineData : undefined}
+                viewMode={viewMode}
+                maxValue={viewMode === 'monthly' ? maxMonthlyValue : maxYearlyValue}
+                currencySymbol={currencySymbol}
+              />
+            </View>
           </View>
         </View>
+
+
+        {/* --- Budget Progress Section --- */}
+        <View style={{ marginHorizontal: 16, marginBottom: 24 }}>
+          {(!incomeStartDate || (viewMode === 'monthly' && !isAfterIncomeStart(monthRange.start)) || (viewMode === 'yearly' && activeMonthsCount === 0)) && budget === 0 ? (
+            <TouchableOpacity
+              onPress={() => router.push('/settings')}
+              style={[styles.budgetPlaceholder, { backgroundColor: Colors.surfaceHighlight }]}
+            >
+              <View style={[styles.placeholderIcon, { backgroundColor: Colors.surface }]}>
+                <Wallet size={20} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.placeholderTitle, { color: Colors.text }]}>Start Tracking Savings</Text>
+                <Text style={[styles.placeholderText, { color: Colors.textSecondary }]}>Set a budget or income start date to unlock.</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.budgetCard, {
+              backgroundColor: 'rgba(52, 199, 89, 0.08)',
+              borderColor: 'rgba(52, 199, 89, 0.2)',
+            }]}>
+              <View style={styles.budgetHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ padding: 6, borderRadius: 8, backgroundColor: 'rgba(52, 199, 89, 0.15)' }}>
+                    <Wallet size={14} color={Colors.text} />
+                  </View>
+                  <Text style={[styles.budgetLabel, { color: Colors.textSecondary }]}>
+                    {viewMode === 'monthly' ? (budget > 0 ? 'Monthly Budget' : 'Net Income') : (budget > 0 ? `Yearly Budget (${activeMonthsCount}mo)` : 'Yearly Income')}
+                  </Text>
+                </View>
+                <Text style={[styles.budgetTotal, { color: Colors.text }]}>
+                  {currencySymbol}
+                  {viewMode === 'monthly'
+                    ? (budget > 0 ? budget.toLocaleString() : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions).toLocaleString())
+                    : (budget > 0 ? (budget * activeMonthsCount).toLocaleString() : annualIncome.toLocaleString())
+                  }
+                </Text>
+              </View>
+
+              <ProgressBar
+                progress={
+                  viewMode === 'monthly'
+                    ? (budget > 0 ? Math.min(selectedMonthSpent / budget, 1) : Math.min(selectedMonthSpent / ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions || 1), 1))
+                    : Math.min(activeYearlyBudgetSpent / (budget > 0 ? (budget * activeMonthsCount) : (annualIncome || 1)), 1)
+                }
+                gradientColors={(viewMode === 'monthly' ? (budget > 0 ? selectedMonthSpent > budget : selectedMonthSpent > ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions)) : (budget > 0 ? activeYearlyBudgetSpent > (budget * activeMonthsCount) : activeYearlyBudgetSpent > annualIncome)) ? [Colors.danger, '#FF6B6B'] : [Colors.success, '#34c759']}
+                height={8}
+                style={{ borderRadius: 4 }}
+              />
+
+              <View style={styles.budgetFooter}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 11, fontFamily: 'Geist-Medium' }}>
+                  {Math.round((
+                    viewMode === 'monthly'
+                      ? (selectedMonthSpent / (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions || 1))) * 100
+                      : (activeYearlyBudgetSpent / (budget > 0 ? (budget * activeMonthsCount) : (annualIncome || 1))) * 100
+                  ))}% used
+                </Text>
+
+                {((viewMode === 'monthly' && selectedMonthSpent > (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))) ||
+                  (viewMode === 'yearly' && activeYearlyBudgetSpent > (budget > 0 ? (budget * activeMonthsCount) : annualIncome))) ? (
+                  <Text style={{ color: Colors.danger, fontSize: 11, fontFamily: 'Geist-SemiBold' }}>
+                    Over by {currencySymbol}
+                    {(viewMode === 'monthly'
+                      ? selectedMonthSpent - (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
+                      : activeYearlyBudgetSpent - (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
+                    ).toFixed(0)}
+                  </Text>
+                ) : (
+                  <Text style={{ color: Colors.text, fontSize: 11, fontFamily: 'Geist-SemiBold' }}>
+                    {currencySymbol}
+                    {(viewMode === 'monthly'
+                      ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions)) - selectedMonthSpent
+                      : (budget > 0 ? (budget * activeMonthsCount) : annualIncome) - activeYearlyBudgetSpent
+                    ).toFixed(0)} left
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* --- Period Selector --- */}
+        <View style={styles.periodSelector}>
+          <TouchableOpacity
+            onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev - 1) : setSelectedBarIndex(prev => Math.max(prev - 1, 0))}
+            style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
+            disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
+          >
+            <ChevronLeft size={20} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
+          </TouchableOpacity>
+
+          <Text style={[styles.periodText, { color: Colors.text }]}>
+            {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${selectedBar.year}` : 'Current Month')}
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev + 1) : setSelectedBarIndex(prev => Math.min(prev + 1, monthlyData.length - 1))}
+            style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
+            disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
+          >
+            <ChevronRight size={20} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
+          </TouchableOpacity>
+        </View>
+
 
         {/* --- Owed Sections --- */}
         {(() => {
@@ -459,13 +534,13 @@ export default function DashboardScreen() {
           const totalOwed = owedTransactions.reduce((acc, t) => acc + t.amount, 0);
 
           return (
-            <>
+            <View style={{ gap: 16, marginBottom: 24 }}>
               {totalLent > 0 && (
                 <DebtCreditCard
                   type="owed"
                   amount={totalLent}
                   transactions={lentTransactions}
-                  onSettle={(id) => deleteTransaction(id)} // Assuming 'delete' settles it, or we could update
+                  onSettle={(id) => deleteTransaction(id)}
                   currencySymbol={currencySymbol}
                 />
               )}
@@ -478,11 +553,11 @@ export default function DashboardScreen() {
                   currencySymbol={currencySymbol}
                 />
               )}
-            </>
+            </View>
           );
         })()}
 
-        {/* Recent Transactions */}
+        {/* --- Recent Transactions --- */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recent Activity</Text>
@@ -494,11 +569,49 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.transactionsList}>
-            {recentTransactions.slice(0, showAllTransactions ? undefined : 5).map(t => (
-              <ExpenseCard key={t.id} transaction={t} />
-            ))}
+            {(() => {
+              const groupedTransactions = recentTransactions.slice(0, showAllTransactions ? undefined : 5).reduce((groups, t) => {
+                const date = new Date(t.date);
+                const today = new Date();
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                let key = format(date, 'MMMM d, yyyy');
+                if (date.toDateString() === today.toDateString()) {
+                  key = 'Today';
+                } else if (date.toDateString() === yesterday.toDateString()) {
+                  key = 'Yesterday';
+                }
+
+                if (!groups[key]) {
+                  groups[key] = [];
+                }
+                groups[key].push(t);
+                return groups;
+              }, {} as Record<string, typeof recentTransactions>);
+
+              return Object.entries(groupedTransactions).map(([date, txs]) => (
+                <View key={date} style={{ marginBottom: 24 }}>
+                  <Text style={{
+                    fontSize: 12,
+                    fontFamily: 'Geist-SemiBold',
+                    color: Colors.textSecondary,
+                    marginBottom: 12,
+                    marginLeft: 20,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                    opacity: 0.7
+                  }}>
+                    {date}
+                  </Text>
+                  {txs.map(t => (
+                    <ExpenseCard key={t.id} transaction={t} />
+                  ))}
+                </View>
+              ));
+            })()}
             {recentTransactions.length === 0 && (
-              <View style={[styles.emptyState, { backgroundColor: Colors.surface }]}>
+              <View style={[styles.emptyState, { backgroundColor: Colors.surface, marginHorizontal: 20 }]}>
                 <View style={[styles.emptyIcon, { backgroundColor: Colors.surfaceHighlight }]}>
                   <Wallet size={24} color={Colors.textSecondary} />
                 </View>
@@ -515,125 +628,138 @@ export default function DashboardScreen() {
         achievement={newlyUnlockedAchievement}
         onClose={clearNewlyUnlockedAchievement}
       />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
+
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   greeting: {
-    fontSize: 12,
-    marginBottom: 4,
+    fontSize: 13,
+    marginBottom: 2,
+    marginTop: 4,
     fontFamily: 'Geist-Regular',
   },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontFamily: 'Geist-Bold',
+    letterSpacing: -0.5,
   },
-  toggleContainer: {
+  pillContainer: {
     flexDirection: 'row',
     padding: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 20,
   },
-  toggleButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  pillButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 10,
   },
-  toggleText: {
-    fontFamily: 'Geist-SemiBold',
+  pillText: {
+    fontFamily: 'Geist-Medium',
     fontSize: 12,
   },
-  activeToggleText: {
-    color: '#FFFFFF',
-  },
-  mainCard: {
-    marginHorizontal: 16,
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 24,
-  },
-  gradientBackground: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 24,
-  },
-  periodSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  chevronBtn: {
-    padding: 8,
+  iconButton: {
+    padding: 10,
     borderRadius: 12,
   },
-  periodText: {
-    fontSize: 16,
-    fontFamily: 'Geist-SemiBold',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  statsHeader: {
+  summarySection: {
+    paddingHorizontal: 16,
     marginBottom: 20,
   },
-  statsLabel: {
-    fontSize: 14,
+  summaryCard: {
+    borderRadius: 24,
+    padding: 20,
+    minHeight: 180,
+  },
+  label: {
+    fontSize: 12,
     fontFamily: 'Geist-Medium',
     marginBottom: 4,
+    opacity: 0.7,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  statsValue: {
+  amount: {
     fontSize: 24,
     fontFamily: 'Geist-Bold',
+    letterSpacing: -0.5,
   },
-  statLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-    fontFamily: 'Geist-Regular',
+  chartWrapper: {
+    marginTop: 10,
+    marginLeft: -10,
+    alignItems: 'center'
   },
-  statValue: {
-    fontSize: 24,
-    fontFamily: 'Geist-Bold',
-  },
-  statsSubtext: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  chartContainer: {
+  budgetPlaceholder: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-    marginLeft: -10, // Offset for chart padding
-  },
-  budgetWrapper: {
     padding: 16,
     borderRadius: 16,
+    gap: 16,
   },
-  budgetHeaders: {
+  placeholderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderTitle: {
+    fontFamily: 'Geist-SemiBold',
+    fontSize: 14,
+    marginBottom: 2
+  },
+  placeholderText: {
+    fontFamily: 'Geist-Regular',
+    fontSize: 12,
+  },
+  budgetCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+  },
+  budgetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+    alignItems: 'center'
   },
   budgetLabel: {
     fontSize: 12,
     fontFamily: 'Geist-Medium',
+    opacity: 0.8
   },
   budgetTotal: {
-    fontSize: 12,
+    fontSize: 14,
+    fontFamily: 'Geist-Bold',
+  },
+  budgetFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    alignItems: 'center'
+  },
+  periodSelector: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+    marginBottom: 30,
+  },
+  chevronBtn: {
+    padding: 12,
+    borderRadius: 14,
+  },
+  periodText: {
+    fontSize: 16,
     fontFamily: 'Geist-SemiBold',
   },
   sectionContainer: {
@@ -647,89 +773,23 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: 'Geist-Bold',
-    marginBottom: 12,
+    letterSpacing: -0.5,
   },
   seeAll: {
-    fontSize: 14,
-    fontFamily: 'Geist-SemiBold',
-  },
-  owedCard: {
-    marginHorizontal: 20,
-    borderRadius: 24,
-    padding: 20,
-    marginTop: 12,
-  },
-  owedHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  owedLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontFamily: 'Geist-Medium',
-  },
-  owedValue: {
-    color: '#FFF',
-    fontSize: 20,
-    fontFamily: 'Geist-Bold',
-  },
-  owedList: {
-    gap: 12,
-  },
-  owedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  owedInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#FFF',
-    fontFamily: 'Geist-Bold',
-    fontSize: 14,
-  },
-  owedName: {
-    color: '#FFF',
-    fontFamily: 'Geist-SemiBold',
-    fontSize: 14,
-  },
-  owedDate: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-  },
-  settleBtn: {
-    backgroundColor: '#FFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  settleText: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: 'Geist-SemiBold',
   },
   transactionsList: {
     gap: 4,
   },
   emptyState: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     padding: 32,
     borderRadius: 20,
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
   },
   emptyIcon: {
     width: 48,

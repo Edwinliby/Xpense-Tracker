@@ -119,18 +119,18 @@ export default function AnalyticsScreen() {
     return (
         <SafeAreaView style={Styles.container}>
             <View style={[Styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 20 }]}>
-                <Text style={[Styles.title, { marginBottom: 0, fontSize: 28 }]}>Analytics</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Text style={[Styles.title, { marginBottom: 0, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Analytics</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
                     <TouchableOpacity
-                        style={styles.exportButton}
+                        style={[styles.exportButton, { backgroundColor: Colors.surfaceHighlight, borderColor: Colors.border }]}
                         onPress={() => router.push('/map')}
                         activeOpacity={0.7}
                     >
-                        <Map size={20} color={Colors.primary} />
+                        <Map size={22} color={Colors.primary} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={styles.exportButton}
+                        style={[styles.exportButton, { backgroundColor: Colors.surfaceHighlight, borderColor: Colors.border }]}
                         onPress={handleExportPDF}
                         disabled={isGeneratingPdf}
                         activeOpacity={0.7}
@@ -138,7 +138,7 @@ export default function AnalyticsScreen() {
                         {isGeneratingPdf ? (
                             <ActivityIndicator size="small" color={Colors.primary} />
                         ) : (
-                            <Download size={20} color={Colors.primary} />
+                            <Download size={22} color={Colors.primary} />
                         )}
                     </TouchableOpacity>
                 </View>
@@ -153,6 +153,7 @@ export default function AnalyticsScreen() {
                         tintColor={Colors.primary}
                     />
                 }
+                contentContainerStyle={{ paddingBottom: 40 }}
             >
                 {/* Quick Insights */}
                 <QuickInsightsWidget />
@@ -186,12 +187,18 @@ export default function AnalyticsScreen() {
 
 const styles = StyleSheet.create({
     exportButton: {
-        padding: 8,
-        backgroundColor: 'rgba(79, 172, 254, 0.1)',
-        borderRadius: 12,
-        width: 40,
-        height: 40,
+        padding: 10,
+        borderRadius: 16,
+        width: 48,
+        height: 48,
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        // Generic Shadow
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
 });

@@ -107,8 +107,7 @@ const ExpenseCardComponent: React.FC<ExpenseCardProps> = ({ transaction }) => {
                     <View style={styles.row}>
                         <Text style={[styles.subtitle, { color: Colors.textSecondary }]}>
                             {transaction.paidBy ? `Via ${transaction.paidBy} • ` : ''}
-                            {formattedDate}
-                            {description ? ` • ${category}` : ''}
+                            {description ? category : formattedDate}
                         </Text>
 
                         {receiptImage && (
@@ -154,12 +153,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        borderRadius: 20,
+        borderRadius: 22, // Slightly more rounded
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)', // Subtle border
     },
     iconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
+        width: 48, // Slightly larger
+        height: 48,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 16,
@@ -167,12 +168,12 @@ const styles = StyleSheet.create({
     details: {
         flex: 1,
         justifyContent: 'center',
+        gap: 2,
     },
     title: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 4,
-        letterSpacing: 0.2,
+        fontSize: 15,
+        fontFamily: 'Geist-SemiBold', // Updated font
+        letterSpacing: -0.2,
     },
     row: {
         flexDirection: 'row',
@@ -180,7 +181,8 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 12,
-        fontWeight: '500',
+        fontFamily: 'Geist-Regular', // Updated font
+        opacity: 0.8
     },
     clipIcon: {
         marginLeft: 6,
@@ -192,11 +194,13 @@ const styles = StyleSheet.create({
     },
     amount: {
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold', // Updated font
+        letterSpacing: -0.3,
     },
     originalAmount: {
         fontSize: 11,
+        fontFamily: 'Geist-Medium',
         marginTop: 2,
-        opacity: 0.8,
+        opacity: 0.6,
     },
 });

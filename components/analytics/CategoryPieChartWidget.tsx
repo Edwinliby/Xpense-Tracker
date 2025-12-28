@@ -59,14 +59,35 @@ export const CategoryPieChartWidget: React.FC = () => {
 
     if (totalSpending === 0) {
         return (
-            <View style={[styles.container, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow, justifyContent: 'center', alignItems: 'center', height: 250 }]}>
-                <Text style={{ color: Colors.textSecondary }}>No expense data for this month</Text>
+            <View style={[
+                styles.container,
+                Styles.shadow,
+                {
+                    backgroundColor: Colors.surface,
+                    shadowColor: Colors.shadow,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: 250,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.05)'
+                }
+            ]}>
+                <Text style={{ color: Colors.textSecondary, fontFamily: 'Geist-Medium' }}>No expense data for this month</Text>
             </View>
         );
     }
 
     return (
-        <View style={[styles.container, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+        <View style={[
+            styles.container,
+            Styles.shadow,
+            {
+                backgroundColor: Colors.surface,
+                shadowColor: Colors.shadow,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.05)'
+            }
+        ]}>
             <Text style={[styles.title, { color: Colors.text }]}>Expense Breakdown</Text>
 
             <View style={styles.contentContainer}>
@@ -80,10 +101,10 @@ export const CategoryPieChartWidget: React.FC = () => {
                         centerLabelComponent={() => {
                             return (
                                 <View style={{ justifyContent: 'center', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 22, color: Colors.text, fontWeight: 'bold' }}>
+                                    <Text style={{ fontSize: 22, color: Colors.text, fontFamily: 'Geist-Bold' }}>
                                         {currencySymbol}{totalSpending >= 1000 ? (totalSpending / 1000).toFixed(1) + 'k' : totalSpending.toFixed(0)}
                                     </Text>
-                                    <Text style={{ fontSize: 10, color: Colors.textSecondary }}>Total</Text>
+                                    <Text style={{ fontSize: 10, color: Colors.textSecondary, fontFamily: 'Geist-Medium' }}>Total</Text>
                                 </View>
                             );
                         }}
@@ -111,14 +132,15 @@ export const CategoryPieChartWidget: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 20,
+        padding: 24,
         marginHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 32,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 20,
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 24,
+        letterSpacing: -0.5,
     },
     contentContainer: {
         flexDirection: 'row',
@@ -131,7 +153,7 @@ const styles = StyleSheet.create({
     legendContainer: {
         flex: 1,
         paddingLeft: 24,
-        gap: 12,
+        gap: 14,
     },
     legendItem: {
         flexDirection: 'row',
@@ -141,18 +163,18 @@ const styles = StyleSheet.create({
     dot: {
         width: 10,
         height: 10,
-        borderRadius: 5,
-        marginRight: 8,
+        borderRadius: 4,
+        marginRight: 10,
     },
     legendText: {
-        fontSize: 12,
+        fontSize: 13,
         flex: 1,
         marginRight: 8,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
     },
     legendValue: {
-        fontSize: 13,
-        fontWeight: '700',
+        fontSize: 14,
+        fontFamily: 'Geist-Bold',
     },
     emptyText: {
         textAlign: 'center',

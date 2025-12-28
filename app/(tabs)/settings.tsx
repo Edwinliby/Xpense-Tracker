@@ -59,7 +59,7 @@ export default function SettingsScreen() {
 
     const debouncedSaveBudget = useCallback(
         debounce((value: string) => {
-            const parsed = parseFloat(value);
+            const parsed = value.trim() === '' ? 0 : parseFloat(value);
             if (!isNaN(parsed)) {
                 setIsSaving(true);
                 setBudget(parsed);
@@ -72,7 +72,7 @@ export default function SettingsScreen() {
 
     const debouncedSaveIncome = useCallback(
         debounce((value: string) => {
-            const parsed = parseFloat(value);
+            const parsed = value.trim() === '' ? 0 : parseFloat(value);
             if (!isNaN(parsed)) {
                 setIsSaving(true);
                 setIncome(parsed);
@@ -218,17 +218,84 @@ export default function SettingsScreen() {
     };
 
     return (
-        <SafeAreaView style={Styles.container}>
+        <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
+            <View style={styles.header}>
+                <Text style={[Styles.title, { marginBottom: 4, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Settings</Text>
+                <Text style={{ color: Colors.textSecondary, fontSize: 13, marginBottom: 16 }}>Manage your preferences and data</Text>
+            </View>
+
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                <Text style={[Styles.title, { marginHorizontal: 20 }]}>Settings</Text>
 
-                {/* Financial Settings Section */}
-                <View style={styles.sectionContainer}>
-                    <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>FINANCIALS</Text>
-                    <View style={[Styles.card, styles.cardContainer]}>
+                {/* Section: Profile & Preferences */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionHeader}>PREFERENCES</Text>
 
-                        {/* Budget & Income */}
-                        <View style={styles.inputRow}>
+                    {/* Theme Selector */}
+                    <View style={styles.card}>
+                        <View style={styles.rowItem}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.itemTitle, { color: Colors.text }]}>App Theme</Text>
+                                <Text style={[styles.itemSubtitle, { color: Colors.textSecondary }]}>Select your preferred look</Text>
+                            </View>
+                            <View style={styles.themeToggleContainer}>
+                                {['light', 'dark', 'system'].map((t) => {
+                                    const isActive = theme === t;
+                                    const Icon = t === 'light' ? Sun : t === 'dark' ? Moon : Monitor;
+                                    return (
+                                        <TouchableOpacity
+                                            key={t}
+                                            style={[styles.themeOption, isActive && { backgroundColor: Colors.surfaceHighlight, borderColor: Colors.border }]}
+                                            onPress={() => setTheme(t as any)}
+                                        >
+                                            <Icon size={18} color={isActive ? Colors.text : Colors.textSecondary} />
+                                        </TouchableOpacity>
+                                    )
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={styles.separator} />
+
+                        {/* Currency Selector */}
+                        <View style={styles.rowItem}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.itemTitle, { color: Colors.text }]}>Currency</Text>
+                                <Text style={[styles.itemSubtitle, { color: Colors.textSecondary }]}>Symbol used across the app</Text>
+                            </View>
+                            {loading ? (
+                                <ActivityIndicator size="small" color={Colors.primary} />
+                            ) : (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ maxWidth: '50%' }}>
+                                    {['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'INR'].map((curr) => (
+                                        <TouchableOpacity
+                                            key={curr}
+                                            onPress={() => setCurrency(curr)}
+                                            style={[
+                                                styles.currencyOption,
+                                                {
+                                                    backgroundColor: currency === curr ? Colors.primary : 'transparent',
+                                                    borderColor: currency === curr ? Colors.primary : Colors.border
+                                                }
+                                            ]}
+                                        >
+                                            <Text style={[
+                                                styles.currencyOptionText,
+                                                { color: currency === curr ? '#fff' : Colors.textSecondary }
+                                            ]}>{curr}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            )}
+                        </View>
+                    </View>
+                </View>
+
+                {/* Section: Financials */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionHeader}>FINANCIAL GOALS</Text>
+                    <View style={styles.card}>
+                        {/* Income & Budget Inputs */}
+                        <View style={{ flexDirection: 'row', gap: 16 }}>
                             <View style={{ flex: 1 }}>
                                 <Input
                                     label="Monthly Income"
@@ -237,11 +304,9 @@ export default function SettingsScreen() {
                                     value={incomeInput}
                                     onChangeText={handleIncomeChange}
                                     prefix={currencySymbol}
+                                    style={{ backgroundColor: Colors.background }}
                                 />
                             </View>
-                        </View>
-                        <View style={{ height: 16 }} />
-                        <View style={styles.inputRow}>
                             <View style={{ flex: 1 }}>
                                 <Input
                                     label="Monthly Budget"
@@ -250,27 +315,34 @@ export default function SettingsScreen() {
                                     value={budgetInput}
                                     onChangeText={handleBudgetChange}
                                     prefix={currencySymbol}
+                                    style={{ backgroundColor: Colors.background }}
                                 />
                             </View>
                         </View>
 
-                        {/* Income Start Date */}
-                        <View style={styles.divider} />
-                        <Text style={[styles.label, { color: Colors.textSecondary }]}>Income Start Month</Text>
-                        <TouchableOpacity
-                            onPress={() => setShowDatePicker(true)}
-                            style={[styles.dateButton, { borderColor: Colors.border, backgroundColor: Colors.background }]}
-                        >
-                            <Calendar size={20} color={Colors.text} />
-                            <Text style={{ flex: 1, color: incomeStartDate ? Colors.text : Colors.textSecondary, fontSize: 16 }}>
-                                {incomeStartDate || "Select Date (YYYY-MM)"}
-                            </Text>
+                        <View style={{ height: 16 }} />
+
+                        {/* Income Start Date Picker */}
+                        <View style={[styles.pickerContainer, { backgroundColor: Colors.background, borderColor: Colors.border }]}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.itemTitle, { color: Colors.text, fontSize: 13, marginBottom: 4 }]}>Tracking Start Date</Text>
+                                <Text style={{ color: incomeStartDate ? Colors.text : Colors.textSecondary, fontSize: 15, fontWeight: '500' }}>
+                                    {incomeStartDate || "Not set (Select Date)"}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setShowDatePicker(true)}
+                                style={{ padding: 8, backgroundColor: Colors.surfaceHighlight, borderRadius: 8 }}
+                            >
+                                <Calendar size={20} color={Colors.text} />
+                            </TouchableOpacity>
                             {incomeStartDate && (
-                                <TouchableOpacity onPress={() => setIncomeStartDate(null)} style={{ padding: 4 }}>
+                                <TouchableOpacity onPress={() => setIncomeStartDate(null)} style={{ marginLeft: 8, padding: 4 }}>
                                     <X size={16} color={Colors.textSecondary} />
                                 </TouchableOpacity>
                             )}
-                        </TouchableOpacity>
+                        </View>
+
                         {showDatePicker && (
                             <DateTimePicker
                                 value={incomeStartDate ? new Date(incomeStartDate + '-01') : new Date()}
@@ -280,85 +352,31 @@ export default function SettingsScreen() {
                                 themeVariant={theme === 'dark' ? 'dark' : 'light'}
                             />
                         )}
-
-                        {/* Currency */}
-                        <View style={styles.divider} />
-                        <Text style={[styles.label, { color: Colors.textSecondary }]}>Currency</Text>
-                        {loading ? (
-                            <ActivityIndicator size="small" color={Colors.primary} style={{ alignSelf: 'flex-start', marginVertical: 12 }} />
-                        ) : (
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
-                                {['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'INR'].map((curr) => (
-                                    <TouchableOpacity
-                                        key={curr}
-                                        onPress={() => setCurrency(curr)}
-                                        style={[
-                                            styles.currencyChip,
-                                            {
-                                                backgroundColor: currency === curr ? Colors.primary : Colors.surfaceHighlight,
-                                                borderColor: currency === curr ? Colors.primary : 'transparent'
-                                            }
-                                        ]}
-                                    >
-                                        <Text style={[
-                                            styles.currencyText,
-                                            { color: currency === curr ? '#fff' : Colors.text }
-                                        ]}>{curr}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        )}
                     </View>
                 </View>
 
-
-                {/* Appearance Section */}
-                <View style={styles.sectionContainer}>
-                    <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>APPEARANCE</Text>
-                    <View style={[Styles.card, styles.themeContainer]}>
-                        {['light', 'dark', 'system'].map((t) => {
-                            const isActive = theme === t;
-                            const Icon = t === 'light' ? Sun : t === 'dark' ? Moon : Monitor;
-                            return (
-                                <TouchableOpacity
-                                    key={t}
-                                    style={[styles.themeButton, isActive && { backgroundColor: Colors.primary }]}
-                                    onPress={() => setTheme(t as any)}
-                                >
-                                    <Icon size={24} color={isActive ? '#fff' : Colors.text} />
-                                    <Text style={[styles.themeText, { color: isActive ? '#fff' : Colors.text }]}>
-                                        {t.charAt(0).toUpperCase() + t.slice(1)}
-                                    </Text>
-                                </TouchableOpacity>
-                            )
-                        })}
-                    </View>
-                </View>
-
-                {/* Categories Section */}
-                <View style={styles.sectionContainer}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <Text style={[styles.sectionTitle, { color: Colors.textSecondary, marginBottom: 0 }]}>CATEGORIES</Text>
-                        <TouchableOpacity onPress={() => setShowAddCategory(true)}>
-                            <Text style={{ color: Colors.primary, fontWeight: '600' }}>+ Add New</Text>
+                {/* Section: Categories */}
+                <View style={styles.section}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 }}>
+                        <Text style={styles.sectionHeader}>CATEGORIES</Text>
+                        <TouchableOpacity onPress={() => setShowAddCategory(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Icons.Plus size={14} color={Colors.primary} />
+                            <Text style={{ color: Colors.primary, fontSize: 12, fontWeight: '600' }}>Add New</Text>
                         </TouchableOpacity>
                     </View>
 
-                    <View style={[Styles.card, { padding: 16 }]}>
-                        <View style={styles.categoryChipsContainer}>
+                    <View style={styles.card}>
+                        <View style={styles.categoryGrid}>
                             {categories.map((cat) => (
-                                <View key={cat.id} style={[styles.categoryChip, { backgroundColor: cat.color + '15', borderColor: cat.color }]}>
+                                <View key={cat.id} style={[styles.categoryPill, { backgroundColor: cat.color + '10', borderColor: cat.color + '40' }]}>
                                     {renderIcon(cat.icon, cat.color, 14)}
-                                    <Text style={[styles.categoryChipText, { color: Colors.text }]}>
-                                        {cat.name}
-                                    </Text>
+                                    <Text style={[styles.categoryPillText, { color: Colors.text }]}>{cat.name}</Text>
                                     {!cat.isPredefined && (
                                         <TouchableOpacity
-                                            key={`${cat.id}-delete`}
                                             onPress={() => handleDeleteCategory(cat.id, cat.name)}
-                                            style={styles.chipDeleteButton}
+                                            style={styles.deleteCategoryBtn}
                                         >
-                                            <X size={14} color={cat.color} />
+                                            <X size={12} color={cat.color} />
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -367,56 +385,63 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
-                {/* Data & Account Section */}
-                <View style={styles.sectionContainer}>
-                    <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>DATA & ACCOUNT</Text>
-                    <View style={[Styles.card, { overflow: 'hidden', padding: 0 }]}>
-                        <TouchableOpacity
-                            style={[styles.menuItem, { borderBottomColor: Colors.border, borderBottomWidth: 1 }]}
-                            onPress={handleExport}
-                        >
-                            <View style={[styles.menuIconBox, { backgroundColor: Colors.surfaceHighlight }]}>
-                                <Download size={20} color={Colors.text} />
+                {/* Section: Data & Danger Zone */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionHeader}>DATA MANAGEMENT</Text>
+                    <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>
+
+                        <TouchableOpacity style={styles.menuRow} onPress={handleExport}>
+                            <View style={[styles.iconBox, { backgroundColor: Colors.surfaceHighlight }]}>
+                                <Download size={18} color={Colors.text} />
                             </View>
-                            <Text style={[styles.menuItemText, { color: Colors.text }]}>Export Data (CSV)</Text>
-                            <Icons.ChevronRight size={20} color={Colors.textSecondary} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.menuText, { color: Colors.text }]}>Export Data</Text>
+                                <Text style={styles.menuSubtext}>Download as CSV</Text>
+                            </View>
+                            <Icons.ChevronRight size={18} color={Colors.textSecondary} opacity={0.5} />
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={[styles.menuItem, { borderBottomColor: Colors.border, borderBottomWidth: 1 }]}
-                            onPress={() => router.push('/trash')}
-                        >
-                            <View style={[styles.menuIconBox, { backgroundColor: Colors.surfaceHighlight }]}>
-                                <Trash2 size={20} color={Colors.text} />
+                        <View style={styles.separator} />
+
+                        <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/trash')}>
+                            <View style={[styles.iconBox, { backgroundColor: Colors.surfaceHighlight }]}>
+                                <Trash2 size={18} color={Colors.text} />
                             </View>
-                            <Text style={[styles.menuItemText, { color: Colors.text }]}>Trash Bin</Text>
-                            <Icons.ChevronRight size={20} color={Colors.textSecondary} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.menuText, { color: Colors.text }]}>Trash Bin</Text>
+                                <Text style={styles.menuSubtext}>Restore deleted items</Text>
+                            </View>
+                            <Icons.ChevronRight size={18} color={Colors.textSecondary} opacity={0.5} />
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={[styles.menuItem, { borderBottomColor: Colors.border, borderBottomWidth: 1 }]}
-                            onPress={handleResetData}
-                        >
-                            <View style={[styles.menuIconBox, { backgroundColor: '#FEE2E2' }]}>
-                                <Icons.RefreshCw size={20} color={Colors.danger} />
+                        <View style={styles.separator} />
+
+                        <TouchableOpacity style={styles.menuRow} onPress={handleResetData}>
+                            <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
+                                <Icons.RefreshCw size={18} color={Colors.danger} />
                             </View>
-                            <Text style={[styles.menuItemText, { color: Colors.danger }]}>Reset App Data</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.menuText, { color: Colors.danger }]}>Reset App Data</Text>
+                                <Text style={styles.menuSubtext}>Clear all transactions & settings</Text>
+                            </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={styles.menuItem}
-                            onPress={handleSignOut}
-                        >
-                            <View style={[styles.menuIconBox, { backgroundColor: '#FEE2E2' }]}>
-                                <Icons.LogOut size={20} color={Colors.danger} />
+                        <View style={styles.separator} />
+
+                        <TouchableOpacity style={styles.menuRow} onPress={handleSignOut}>
+                            <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
+                                <Icons.LogOut size={18} color={Colors.danger} />
                             </View>
-                            <Text style={[styles.menuItemText, { color: Colors.danger }]}>Sign Out</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.menuText, { color: Colors.danger }]}>Sign Out</Text>
+                            </View>
                         </TouchableOpacity>
                     </View>
                 </View>
+
             </ScrollView>
 
-            {/* Add Category Modal */}
+            {/* Keeping existing Modals and Pickers as is */}
             <Modal visible={showAddCategory} animationType="slide" transparent onRequestClose={() => setShowAddCategory(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: Colors.surface }]}>
@@ -489,132 +514,128 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-    sectionContainer: {
+    header: {
+        paddingHorizontal: 20,
+        marginBottom: 10,
+    },
+    section: {
         marginBottom: 24,
         paddingHorizontal: 20,
     },
-    sectionTitle: {
+    sectionHeader: {
         fontSize: 12,
-        fontWeight: '700',
-        marginBottom: 8,
-        letterSpacing: 0.5,
-        opacity: 0.7,
+        fontFamily: 'Geist-SemiBold',
+        marginBottom: 10,
+        letterSpacing: 0.8,
+        opacity: 0.5,
+        marginLeft: 4,
     },
-    cardContainer: {
+    card: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        backgroundColor: 'rgba(255,255,255,0.05)', // Fallback if theme color not applied directly
+        borderRadius: 16,
         padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(150,150,150,0.1)',
     },
-    inputRow: {
+    rowItem: {
         flexDirection: 'row',
-        gap: 12,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: 'rgba(150, 150, 150, 0.2)',
-        marginVertical: 16,
-    },
-    themeContainer: {
-        flexDirection: 'row',
-        padding: 8,
-        gap: 8,
-    },
-    themeButton: {
-        flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        borderRadius: 12,
-        gap: 8,
+        justifyContent: 'space-between',
+        paddingVertical: 4,
     },
-    themeText: {
+    itemTitle: {
+        fontSize: 15,
+        fontFamily: 'Geist-SemiBold',
+    },
+    itemSubtitle: {
         fontSize: 12,
-        fontWeight: '600',
+        marginTop: 2,
+        fontFamily: 'Geist-Medium',
     },
-    dateButton: {
+    themeToggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(150,150,150,0.1)',
+        padding: 3,
+        borderRadius: 10,
+    },
+    themeOption: {
+        padding: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    currencyOption: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    currencyOptionText: {
+        fontSize: 12, // Keep small
+        fontFamily: 'Geist-SemiBold',
+    },
+    pickerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
         borderRadius: 12,
         borderWidth: 1,
-        gap: 10,
-        marginTop: 8,
     },
-    helpText: {
-        fontSize: 11,
-        marginTop: 4,
-        marginBottom: 8,
-        lineHeight: 16,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    currencyChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        marginRight: 8,
-        borderWidth: 1,
-    },
-    currencyText: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    categoryChipsContainer: {
+    categoryGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 8,
-        marginBottom: 16,
     },
-    categoryChip: {
+    categoryPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
         borderRadius: 12,
         borderWidth: 1,
         gap: 6,
     },
-    categoryChipText: {
+    categoryPillText: {
         fontSize: 12,
-        fontWeight: '600',
+        fontFamily: 'Geist-Medium',
     },
-    chipDeleteButton: {
+    deleteCategoryBtn: {
         padding: 2,
+        marginLeft: 2,
+        opacity: 0.7,
     },
-    addCategoryButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 12,
-        borderRadius: 12,
-        gap: 8,
-    },
-    addCategoryText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    menuItem: {
+    menuRow: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
         gap: 16,
     },
-    menuIconBox: {
-        width: 36,
-        height: 36,
+    iconBox: {
+        width: 38,
+        height: 38,
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    menuItemText: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '500',
+    menuText: {
+        fontSize: 15,
+        fontFamily: 'Geist-SemiBold',
+    },
+    menuSubtext: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 1,
+        fontFamily: 'Geist-Medium',
+    },
+    separator: {
+        height: 1,
+        backgroundColor: 'rgba(150, 150, 150, 0.1)',
     },
 
-    // Modal Styles
+    // Keeping existing Modal styles for now
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -635,6 +656,11 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 18,
         fontWeight: '700',
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 4,
     },
     pickerButton: {
         flexDirection: 'row',

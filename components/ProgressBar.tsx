@@ -10,6 +10,7 @@ interface ProgressBarProps {
     height?: number;
     label?: string;
     style?: StyleProp<ViewStyle>;
+    gradientColors?: [string, string, ...string[]];
 }
 
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +20,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     color,
     height = 10,
     label,
-    style
+    style,
+    gradientColors: customGradientColors
 }) => {
     const Colors = useThemeColor();
     const clampedProgress = Math.min(Math.max(progress, 0), 1);
@@ -27,7 +29,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     // Determine gradient colors based on progress
     let gradientColors: [string, string, ...string[]] = [Colors.primary, Colors.primaryHighlight];
 
-    if (!color) {
+    if (customGradientColors) {
+        gradientColors = customGradientColors;
+    } else if (!color) {
         if (clampedProgress >= 0.9) {
             gradientColors = [Colors.danger, '#FF6B6B']; // Red gradient
         } else if (clampedProgress >= 0.75) {

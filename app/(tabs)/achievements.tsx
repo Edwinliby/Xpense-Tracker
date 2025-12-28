@@ -42,46 +42,52 @@ export default function AchievementsScreen() {
     return (
         <SafeAreaView style={Styles.container}>
             <View style={Styles.header}>
-                <Text style={[Styles.title, { marginBottom: 4 }]}>Achievements</Text>
+                <Text style={[Styles.title, { marginBottom: 4, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Achievements</Text>
                 <Text style={[styles.subtitle, { color: Colors.textSecondary }]}>
                     {unlockedCount} of {achievements.length} unlocked
                 </Text>
             </View>
 
             {/* Filter Tabs */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.filterContainer}
-                contentContainerStyle={styles.filterContent}
-            >
-                {filters.map(f => (
-                    <TouchableOpacity
-                        key={f.value}
-                        style={[
-                            styles.filterButton,
-                            {
-                                backgroundColor: filter === f.value ? Colors.primary : Colors.surface,
-                                borderColor: filter === f.value ? Colors.primary : Colors.border,
-                            },
-                        ]}
-                        onPress={() => setFilter(f.value)}
-                        activeOpacity={0.7}
-                    >
-                        <Text
+            <View style={{ paddingBottom: 16 }}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.filterContainer}
+                    contentContainerStyle={styles.filterContent}
+                >
+                    {filters.map(f => (
+                        <TouchableOpacity
+                            key={f.value}
                             style={[
-                                styles.filterText,
-                                { color: filter === f.value ? '#fff' : Colors.text },
+                                styles.filterButton,
+                                {
+                                    backgroundColor: filter === f.value ? Colors.primary : Colors.surface,
+                                    borderColor: filter === f.value ? Colors.primary : Colors.border,
+                                    shadowColor: filter === f.value ? Colors.primary : 'transparent',
+                                    shadowOpacity: filter === f.value ? 0.3 : 0,
+                                    shadowRadius: 8,
+                                    elevation: filter === f.value ? 4 : 0
+                                },
                             ]}
+                            onPress={() => setFilter(f.value)}
+                            activeOpacity={0.7}
                         >
-                            {f.label}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
+                            <Text
+                                style={[
+                                    styles.filterText,
+                                    { color: filter === f.value ? '#fff' : Colors.text },
+                                ]}
+                            >
+                                {f.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
 
             {/* Achievements List */}
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.list}>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.list} contentContainerStyle={{ paddingBottom: 40 }}>
                 {filteredAchievements.map(achievement => (
                     <AchievementBadge key={achievement.id} achievement={achievement} />
                 ))}
@@ -91,8 +97,6 @@ export default function AchievementsScreen() {
                         No achievements in this category yet.
                     </Text>
                 )}
-
-                <View style={{ height: 100 }} />
             </ScrollView>
         </SafeAreaView>
     );
@@ -100,30 +104,31 @@ export default function AchievementsScreen() {
 
 const styles = StyleSheet.create({
     subtitle: {
-        fontSize: 14,
+        fontSize: 13,
         marginBottom: 16,
+        fontFamily: 'Geist-Medium',
     },
     filterContainer: {
         flexGrow: 0,
-        marginBottom: 16,
     },
     filterContent: {
         paddingHorizontal: 20,
-        gap: 8,
+        gap: 10,
         alignItems: 'center',
     },
     filterButton: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingVertical: 10,
-        borderRadius: 20,
+        borderRadius: 24,
         borderWidth: 1,
-        height: 40,
+        height: 44,
         justifyContent: 'center',
         alignItems: 'center',
     },
     filterText: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 13,
+        fontFamily: 'Geist-SemiBold',
+        letterSpacing: 0.3,
     },
     list: {
         flex: 1,
@@ -131,7 +136,9 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         textAlign: 'center',
-        marginTop: 40,
-        fontSize: 14,
+        marginTop: 60,
+        fontSize: 15,
+        fontFamily: 'Geist-Regular',
+        lineHeight: 24,
     },
 });

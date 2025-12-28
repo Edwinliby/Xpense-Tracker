@@ -81,7 +81,19 @@ export const QuickInsightsWidget: React.FC = () => {
                 contentContainerStyle={styles.scrollContent}
             >
                 {insights.map((item) => (
-                    <View key={item.id} style={[styles.cardContainer, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+                    <View
+                        key={item.id}
+                        style={[
+                            styles.cardContainer,
+                            Styles.shadow,
+                            {
+                                backgroundColor: Colors.surface,
+                                shadowColor: Colors.shadow,
+                                borderColor: 'rgba(255,255,255,0.05)',
+                                borderWidth: 1
+                            }
+                        ]}
+                    >
                         <LinearGradient
                             colors={item.bgGradient as [string, string]}
                             style={styles.cardGradient}
@@ -89,7 +101,7 @@ export const QuickInsightsWidget: React.FC = () => {
                             end={{ x: 1, y: 1 }}
                         >
                             <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-                                {React.createElement(item.icon, { size: 20, color: item.color })}
+                                {React.createElement(item.icon, { size: 24, color: item.color })}
                             </View>
                             <View>
                                 <Text style={[styles.cardTitle, { color: Colors.textSecondary }]}>{item.title}</Text>
@@ -106,51 +118,54 @@ export const QuickInsightsWidget: React.FC = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 24,
+        marginBottom: 32,
     },
     sectionTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        marginBottom: 16,
-        marginHorizontal: 20,
-        letterSpacing: 0.5,
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 20,
+        marginHorizontal: 24,
+        letterSpacing: 0.2,
     },
     scrollContent: {
-        paddingHorizontal: 20,
-        gap: 12,
-        paddingBottom: 4, // Space for shadow
+        paddingHorizontal: 24,
+        gap: 16,
+        paddingBottom: 8, // Space for shadow
     },
     cardContainer: {
-        width: 160,
-        height: 170,
+        width: 170,
+        height: 190,
         borderRadius: 24,
         overflow: 'hidden',
     },
     cardGradient: {
         flex: 1,
-        padding: 16,
+        padding: 20,
         justifyContent: 'space-between',
     },
     iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 48,
+        height: 48,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
     },
     cardTitle: {
         fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 4,
+        fontFamily: 'Geist-SemiBold',
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     cardValue: {
-        fontSize: 22,
-        fontWeight: '700',
-        marginBottom: 4,
+        fontSize: 24,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 6,
         letterSpacing: -0.5,
     },
     cardSubtitle: {
-        fontSize: 11,
+        fontSize: 12,
+        fontFamily: 'Geist-Medium',
         opacity: 0.8,
     },
 });

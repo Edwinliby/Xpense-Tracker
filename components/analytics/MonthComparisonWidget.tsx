@@ -44,7 +44,16 @@ export const MonthComparisonWidget: React.FC = () => {
     }, [transactions]);
 
     return (
-        <View style={[styles.container, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+        <View style={[
+            styles.container,
+            Styles.shadow,
+            {
+                backgroundColor: Colors.surface,
+                shadowColor: Colors.shadow,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.05)'
+            }
+        ]}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: Colors.text }]}>Month Comparison</Text>
 
@@ -74,7 +83,7 @@ export const MonthComparisonWidget: React.FC = () => {
 
                 {/* Divider/Arrow */}
                 <View style={styles.divider}>
-                    <ArrowRight size={20} color={Colors.textSecondary} />
+                    <ArrowRight size={24} color={Colors.textSecondary} />
                 </View>
 
                 {/* This Month */}
@@ -117,7 +126,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 24,
         marginHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 32,
     },
     header: {
         flexDirection: 'row',
@@ -126,30 +135,30 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
+        letterSpacing: -0.5,
     },
     badge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
         borderRadius: 12,
-        gap: 4,
+        gap: 6,
     },
     badgeText: {
         fontSize: 12,
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold',
     },
     comparisonContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 20,
+        marginBottom: 24,
     },
     side: {
         flex: 1,
-        // alignItems: 'center', // Align left looks better for comparison
     },
     divider: {
         paddingHorizontal: 16,
@@ -158,30 +167,34 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 13,
         marginBottom: 6,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     amount: {
-        fontSize: 22,
-        fontWeight: '800',
+        fontSize: 24,
+        fontFamily: 'Geist-Bold',
         letterSpacing: -0.5,
     },
     barContainer: {
-        height: 8,
-        borderRadius: 4,
+        height: 10,
+        borderRadius: 5,
         overflow: 'hidden',
         marginBottom: 12,
     },
     barBase: {
         flex: 1,
-        borderRadius: 4,
+        borderRadius: 5,
         overflow: 'hidden',
     },
     barFill: {
         height: '100%',
-        borderRadius: 4,
+        borderRadius: 5,
     },
     insight: {
         fontSize: 13,
-        lineHeight: 18,
+        lineHeight: 20,
+        fontFamily: 'Geist-Regular',
+        opacity: 0.8
     },
 });

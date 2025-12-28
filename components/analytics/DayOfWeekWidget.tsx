@@ -58,7 +58,16 @@ export const DayOfWeekWidget: React.FC = () => {
     const chartWidth = screenWidth - 80;
 
     return (
-        <View style={[styles.container, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+        <View style={[
+            styles.container,
+            Styles.shadow,
+            {
+                backgroundColor: Colors.surface,
+                shadowColor: Colors.shadow,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.05)'
+            }
+        ]}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: Colors.text }]}>Spending by Day</Text>
                 <Text style={[styles.subtitle, { color: Colors.textSecondary }]}>Total this Month</Text>
@@ -80,6 +89,7 @@ export const DayOfWeekWidget: React.FC = () => {
                     noOfSections={3}
                     maxValue={maxVal * 1.2} // Add some headroom
                     showGradient
+                    gradientColor={Colors.primary}
                 />
             </View>
 
@@ -90,20 +100,23 @@ export const DayOfWeekWidget: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 20,
+        padding: 24,
         marginHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 32,
     },
     header: {
-        marginBottom: 16,
+        marginBottom: 20,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
         marginBottom: 4,
+        letterSpacing: -0.5,
     },
     subtitle: {
-        fontSize: 12,
+        fontSize: 13,
+        fontFamily: 'Geist-Medium',
+        opacity: 0.7
     },
     chartContainer: {
         alignItems: 'center',
@@ -118,9 +131,10 @@ const styles = StyleSheet.create({
     statLabel: {
         fontSize: 12,
         marginBottom: 4,
+        fontFamily: 'Geist-Medium',
     },
     statValue: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontFamily: 'Geist-Bold',
     },
 });

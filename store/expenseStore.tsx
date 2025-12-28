@@ -3,13 +3,13 @@ import { fetchExchangeRate } from '@/lib/currency';
 import { fromSupabaseAchievement, fromSupabaseCategory, fromSupabaseTransaction, supabase, toSupabaseAchievement, toSupabaseCategory, toSupabaseTransaction } from '@/lib/supabase';
 import { Achievement, ACHIEVEMENTS } from '@/types/achievements';
 import { Category, Transaction, TransactionType } from '@/types/expense';
-import { BudgetWidget } from '@/widgets/BudgetWidget';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { addMonths } from 'date-fns';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform } from 'react-native';
-import { getWidgetInfo, requestWidgetUpdate } from 'react-native-android-widget';
+import { Alert } from 'react-native';
+
 
 export interface SavingsGoal {
     id: string;
@@ -105,7 +105,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [income, setIncomeState] = useState(0);
     const [incomeStartDate, setIncomeStartDateState] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [currency, setCurrencyState] = useState('USD');
+    const [currency, setCurrencyState] = useState('EUR');
     const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
     const [dismissedWarnings, setDismissedWarnings] = useState<Record<string, boolean>>({});
 
@@ -257,32 +257,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     const currencySymbol = useMemo(() => getCurrencySymbol(currency), [currency]);
 
-    // --- Android Widget Update ---
-    useEffect(() => {
-        if (Platform.OS !== 'android') return;
 
-        const updateWidgets = async () => {
-            try {
-                const availableFunds = calculateFlexibleFunds();
-                const widgetInfos = await getWidgetInfo('BudgetWidget');
-
-                for (const info of widgetInfos) {
-                    await requestWidgetUpdate({
-                        ...info,
-                        widgetName: 'BudgetWidget',
-                        renderWidget: () => <BudgetWidget remainingAmount={`${currencySymbol}${availableFunds.toFixed(2)}`} />,
-                    });
-                }
-            } catch (e) {
-                // Widget might not be installed or other error
-                console.log('Widget update failed', e);
-            }
-        };
-
-        // Debounce slightly to avoid rapid updates during bulk ops
-        const timer = setTimeout(updateWidgets, 1000);
-        return () => clearTimeout(timer);
-    }, [transactions, income, incomeStartDate, currencySymbol, calculateFlexibleFunds]);
 
 
     const { user } = useAuth();

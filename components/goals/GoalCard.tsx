@@ -22,7 +22,7 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onLongPress }) => {
 
     return (
         <TouchableOpacity
-            style={[styles.card, { backgroundColor: Colors.surface }]}
+            style={[styles.card, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}
             onPress={onPress}
             onLongPress={onLongPress}
             activeOpacity={0.7}
@@ -32,7 +32,7 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onLongPress }) => {
                     <Ionicons name={goal.icon as any} size={24} color="white" />
                 </View>
                 <View style={styles.titleContainer}>
-                    <Text style={[styles.name, { color: Colors.text }]}>{goal.name}</Text>
+                    <Text style={[styles.name, { color: Colors.text }]} numberOfLines={1}>{goal.name}</Text>
                     <View style={styles.priorityRow}>
                         {goal.priority !== undefined && goal.priority < 999 && (
                             <View style={[styles.priorityBadge, { backgroundColor: Colors.surfaceHighlight }]}>
@@ -44,10 +44,9 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onLongPress }) => {
                         </Text>
                     </View>
                 </View>
-                {/* Removed Add Funds Button */}
                 {goal.isCompleted && (
                     <View style={styles.completedBadge}>
-                        <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                        <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
                     </View>
                 )}
             </View>
@@ -75,42 +74,49 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onLongPress }) => {
                     {remaining > 0 ? `${currencySymbol}${remaining.toLocaleString()} left to save` : 'Goal Reached!'}
                 </Text>
             </View>
-
-
         </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 16,
-        padding: 16,
-        marginVertical: 8,
-        shadowOffset: { width: 0, height: 2 },
+        borderRadius: 24,
+        padding: 20,
+        marginVertical: 10,
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
+        shadowRadius: 12,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
     },
     iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 52,
+        height: 52,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 2,
     },
     titleContainer: {
         flex: 1,
+        justifyContent: 'center',
     },
     name: {
         fontSize: 18,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
         marginBottom: 4,
+        letterSpacing: -0.3,
     },
     priorityRow: {
         flexDirection: 'row',
@@ -118,50 +124,56 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     priorityBadge: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
     },
     priorityText: {
-        fontSize: 12,
-        fontWeight: 'bold',
+        fontSize: 11,
+        fontFamily: 'Geist-Bold',
     },
     target: {
-        fontSize: 14,
+        fontSize: 13,
+        fontFamily: 'Geist-Medium',
+        opacity: 0.8,
     },
     completedBadge: {
-        marginLeft: 8,
+        marginLeft: 12,
     },
     progressContainer: {
-        marginBottom: 16,
+        marginTop: 4,
     },
     progressTextRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 8,
+        marginBottom: 10,
         alignItems: 'flex-end',
     },
     currentAmount: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 22,
+        fontFamily: 'Geist-Bold',
+        letterSpacing: -0.5,
     },
     percentage: {
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: 15,
+        fontFamily: 'Geist-Medium',
+        marginBottom: 2,
     },
     progressBarBackground: {
-        height: 8,
-        borderRadius: 4,
+        height: 10,
+        borderRadius: 5,
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        borderRadius: 4,
+        borderRadius: 5,
     },
     remainingText: {
-        fontSize: 12,
-        marginTop: 8,
+        fontSize: 13,
+        fontFamily: 'Geist-Regular',
+        marginTop: 10,
         textAlign: 'right',
+        opacity: 0.8,
     },
 
 });

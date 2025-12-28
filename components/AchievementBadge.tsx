@@ -46,7 +46,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement,
                     {
                         borderColor: isUnlocked ? categoryColor : 'rgba(255,255,255,0.05)',
                         borderWidth: isUnlocked ? 1 : 1,
-                        opacity: isUnlocked ? 1 : 0.7
+                        opacity: isUnlocked ? 1 : 0.6
                     }
                 ]}
                 start={{ x: 0, y: 0 }}
@@ -60,11 +60,13 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement,
                     <LinearGradient
                         colors={isUnlocked ? [categoryColor, categoryColor] : [Colors.surfaceHighlight, Colors.surfaceHighlight]}
                         style={styles.iconContainer}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
                     >
                         {isUnlocked ? (
                             <IconComponent size={24} color="#fff" />
                         ) : (
-                            <Lock size={24} color={Colors.textSecondary} />
+                            <Lock size={22} color={Colors.textSecondary} />
                         )}
                     </LinearGradient>
 
@@ -117,17 +119,16 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement,
 
 const styles = StyleSheet.create({
     container: {
-        borderRadius: 20,
+        borderRadius: 24,
         overflow: 'hidden',
-        // Generic Shadow
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowRadius: 10,
         elevation: 4,
     },
     innerContent: {
-        padding: 16,
+        padding: 20,
         flexDirection: 'row',
         alignItems: 'flex-start',
     },
@@ -136,30 +137,38 @@ const styles = StyleSheet.create({
         top: 0,
         left: 0,
         bottom: 0,
-        width: 4,
+        width: 3, // Thinner glow line
+        opacity: 0.8
     },
     iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
+        width: 52,
+        height: 52,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 3,
     },
     content: {
         flex: 1,
+        justifyContent: 'center',
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 6,
     },
     title: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontFamily: 'Geist-Bold',
         flex: 1,
         marginRight: 8,
+        letterSpacing: -0.2,
     },
     badge: {
         paddingHorizontal: 8,
@@ -168,43 +177,49 @@ const styles = StyleSheet.create({
     },
     badgeText: {
         fontSize: 10,
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold',
         textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     description: {
         fontSize: 13,
         marginBottom: 12,
-        lineHeight: 18,
+        lineHeight: 19,
+        fontFamily: 'Geist-Medium',
+        opacity: 0.8,
     },
     progressSection: {
-        marginTop: 4,
+        marginTop: 6,
     },
     progressInfo: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 6,
+        marginBottom: 8,
     },
     progressLabel: {
         fontSize: 11,
-        fontWeight: '600',
+        fontFamily: 'Geist-SemiBold',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     progressText: {
         fontSize: 11,
-        fontWeight: '700',
+        fontFamily: 'Geist-Bold',
     },
     progressBar: {
         height: 6,
         borderRadius: 3,
         overflow: 'hidden',
-        marginBottom: 4,
+        marginBottom: 6,
     },
     progressFill: {
         height: '100%',
         borderRadius: 3,
     },
     requirementText: {
-        fontSize: 10,
+        fontSize: 11,
         textAlign: 'right',
-        opacity: 0.7,
+        fontFamily: 'Geist-Medium',
+        opacity: 0.6,
     },
 });

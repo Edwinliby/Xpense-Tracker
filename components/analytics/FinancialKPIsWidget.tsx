@@ -76,11 +76,16 @@ export const FinancialKPIsWidget: React.FC = () => {
                         style={[
                             styles.card,
                             Styles.shadow,
-                            { backgroundColor: Colors.surface, shadowColor: Colors.shadow }
+                            {
+                                backgroundColor: Colors.surface,
+                                shadowColor: Colors.shadow,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.05)'
+                            }
                         ]}
                     >
                         <View style={[styles.iconContainer, { backgroundColor: kpi.bg + '15' }]}>
-                            {React.createElement(kpi.icon, { size: 20, color: kpi.color })}
+                            {React.createElement(kpi.icon, { size: 24, color: kpi.color })}
                         </View>
                         <View>
                             <Text style={[styles.value, { color: Colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
@@ -99,47 +104,50 @@ export const FinancialKPIsWidget: React.FC = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 24,
+        marginBottom: 32,
     },
     sectionTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        marginBottom: 16,
-        marginHorizontal: 20,
-        letterSpacing: 0.5,
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 20,
+        marginHorizontal: 24,
+        letterSpacing: 0.2,
     },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        paddingHorizontal: 20,
-        gap: 12,
+        paddingHorizontal: 24,
+        gap: 16,
     },
     card: {
-        width: '48%', // Approx half with gap
+        width: '47%', // Approx half with gap
         flexGrow: 1, // Fill remaining space
-        padding: 16,
+        padding: 20,
         borderRadius: 24,
         flexDirection: 'column',
         justifyContent: 'space-between',
-        height: 120,
+        height: 140,
     },
     iconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
+        width: 48,
+        height: 48,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         alignSelf: 'flex-start',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     value: {
-        fontSize: 20,
-        fontWeight: '700',
+        fontSize: 22,
+        fontFamily: 'Geist-Bold',
         marginBottom: 4,
         letterSpacing: -0.5,
     },
     label: {
         fontSize: 12,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
+        opacity: 0.7,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 });

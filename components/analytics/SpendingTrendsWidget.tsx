@@ -41,7 +41,16 @@ export const SpendingTrendsWidget: React.FC = () => {
     const chartWidth = screenWidth; // Extra padding
 
     return (
-        <View style={[styles.container, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+        <View style={[
+            styles.container,
+            Styles.shadow,
+            {
+                backgroundColor: Colors.surface,
+                shadowColor: Colors.shadow,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.05)'
+            }
+        ]}>
             <View style={styles.header}>
                 <View>
                     <Text style={[styles.title, { color: Colors.text }]}>Spending Trends</Text>
@@ -65,7 +74,7 @@ export const SpendingTrendsWidget: React.FC = () => {
                     thickness={3}
                     startFillColor={Colors.primary}
                     endFillColor={Colors.surface}
-                    startOpacity={0.4}
+                    startOpacity={0.2}
                     endOpacity={0.0}
                     curved
                     areaChart
@@ -75,16 +84,16 @@ export const SpendingTrendsWidget: React.FC = () => {
                     dataPointsShape='circle'
                     zIndex1={10}
                     focusedDataPointShape='circle'
-                    focusedDataPointWidth={12}
-                    focusedDataPointHeight={12}
+                    focusedDataPointWidth={14}
+                    focusedDataPointHeight={14}
                     focusedDataPointColor={Colors.primary}
-                    focusedDataPointRadius={6}
+                    focusedDataPointRadius={7}
 
                     yAxisThickness={0}
                     xAxisThickness={0}
                     hideRules
                     hideYAxisText
-                    xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 12, fontWeight: '500' }}
+                    xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 11, fontFamily: 'Geist-Medium' }}
 
                     pointerConfig={{
                         pointerStripHeight: 160,
@@ -92,23 +101,27 @@ export const SpendingTrendsWidget: React.FC = () => {
                         pointerStripWidth: 2,
                         pointerColor: Colors.surface,
                         radius: 6,
-                        pointerLabelWidth: 100,
-                        pointerLabelHeight: 90,
+                        pointerLabelWidth: 80,
+                        pointerLabelHeight: 32,
                         activatePointersOnLongPress: false,
                         autoAdjustPointerLabelPosition: true,
                         pointerLabelComponent: (items: any) => {
                             return (
                                 <View
                                     style={{
-                                        height: 40,
+                                        height: 32,
                                         width: 80,
                                         backgroundColor: Colors.text,
-                                        opacity: 0.9,
-                                        borderRadius: 12,
+                                        borderRadius: 8,
                                         justifyContent: 'center',
                                         alignItems: 'center',
+                                        shadowColor: "#000",
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.2,
+                                        shadowRadius: 4,
+                                        elevation: 4,
                                     }}>
-                                    <Text style={{ color: Colors.surface, fontSize: 13, fontWeight: 'bold' }}>
+                                    <Text style={{ color: Colors.surface, fontSize: 13, fontFamily: 'Geist-Bold' }}>
                                         {currencySymbol}{items[0]?.value.toFixed(0)}
                                     </Text>
                                 </View>
@@ -124,9 +137,9 @@ export const SpendingTrendsWidget: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 20,
+        padding: 24,
         marginHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 32,
     },
     header: {
         flexDirection: 'row',
@@ -135,24 +148,29 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontFamily: 'Geist-Bold',
         marginBottom: 4,
+        letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 13,
+        fontFamily: 'Geist-Medium',
+        opacity: 0.7
     },
     statContainer: {
         alignItems: 'flex-end',
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: 11,
         marginBottom: 2,
-        fontWeight: '500',
+        fontFamily: 'Geist-Medium',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     statValue: {
-        fontSize: 18,
-        fontWeight: '800',
+        fontSize: 20,
+        fontFamily: 'Geist-Bold',
     },
     chartWrapper: {
         alignItems: 'center',

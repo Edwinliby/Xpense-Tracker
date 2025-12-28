@@ -39,15 +39,18 @@ export default function GoalsScreen() {
                     <Text style={[styles.subtext, { color: Colors.textSecondary }]}>Funds are allocated from your remaining balance</Text>
                 </View>
                 <TouchableOpacity style={[styles.addButton, { backgroundColor: Colors.primary }]} onPress={() => setIsAddModalVisible(true)}>
-                    <Ionicons name="add" size={24} color="white" />
+                    <Ionicons name="add" size={26} color="white" />
                 </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
                 {goals.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Ionicons name="rocket-outline" size={64} color={Colors.tabIconDefault} />
-                        <Text style={[styles.emptyText, { color: Colors.textSecondary }]}>No goals yet. Start saving today!</Text>
+                        <View style={[styles.emptyIconContainer, { backgroundColor: Colors.surfaceHighlight }]}>
+                            <Ionicons name="rocket-outline" size={48} color={Colors.primary} />
+                        </View>
+                        <Text style={[styles.emptyTitle, { color: Colors.text }]}>Start Saving</Text>
+                        <Text style={[styles.emptyText, { color: Colors.textSecondary }]}>Create a goal to track your progress and achieve your dreams.</Text>
                         <TouchableOpacity style={[styles.createButton, { backgroundColor: Colors.primary }]} onPress={() => setIsAddModalVisible(true)}>
                             <Text style={styles.createButtonText}>Create Goal</Text>
                         </TouchableOpacity>
@@ -98,61 +101,87 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 24,
+        paddingVertical: 20,
     },
     headerTitle: {
         fontSize: 28,
-        fontWeight: 'bold',
+        fontFamily: 'Geist-Bold',
+        letterSpacing: -1,
     },
     subtext: {
-        fontSize: 12,
+        fontSize: 13,
+        fontFamily: 'Geist-Medium',
         marginTop: 4,
-        marginBottom: 4,
-        maxWidth: 250,
+        maxWidth: 260,
+        lineHeight: 18,
     },
     addButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
     },
     content: {
         paddingHorizontal: 20,
-        paddingBottom: 100, // Space for tab bar
+        paddingBottom: 120, // Space for tab bar
     },
     emptyState: {
         alignItems: 'center',
-        marginTop: 100,
+        marginTop: 80,
+        paddingHorizontal: 40,
     },
-    emptyText: {
-        fontSize: 16,
-        marginTop: 16,
+    emptyIconContainer: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
         marginBottom: 24,
     },
+    emptyTitle: {
+        fontSize: 24,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    emptyText: {
+        fontSize: 15,
+        fontFamily: 'Geist-Regular',
+        marginBottom: 32,
+        textAlign: 'center',
+        lineHeight: 22,
+    },
     createButton: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 24,
+        paddingHorizontal: 32,
+        paddingVertical: 16,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     createButtonText: {
         color: 'white',
-        fontWeight: '600',
+        fontFamily: 'Geist-Bold',
         fontSize: 16,
     },
     completedSection: {
-        marginTop: 24,
+        marginTop: 32,
     },
     sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 12,
-        marginLeft: 4,
+        fontSize: 12,
+        fontFamily: 'Geist-SemiBold',
+        marginBottom: 16,
+        marginLeft: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
 });

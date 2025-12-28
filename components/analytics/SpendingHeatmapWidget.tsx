@@ -100,7 +100,16 @@ export const SpendingHeatmapWidget = () => {
     const selectedDayAmount = selectedDate ? dailySpending[selectedDate] || 0 : 0;
 
     return (
-        <View style={[styles.container, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+        <View style={[
+            styles.container,
+            Styles.shadow,
+            {
+                backgroundColor: Colors.surface,
+                shadowColor: Colors.shadow,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.05)'
+            }
+        ]}>
             <View style={styles.header}>
                 <View>
                     <Text style={[styles.title, { color: Colors.text }]}>Spending Intensity</Text>
@@ -136,12 +145,13 @@ export const SpendingHeatmapWidget = () => {
                     textMonthFontSize: 16,
                     'stylesheet.calendar.header': {
                         week: {
-                            marginTop: 5,
+                            marginTop: 10,
                             flexDirection: 'row',
-                            justifyContent: 'space-between'
+                            justifyContent: 'space-between',
+                            marginBottom: 10
                         }
                     }
-                }}
+                } as any}
                 markingType={'custom'}
                 markedDates={markedDates}
                 onDayPress={(day: { dateString: string }) => {
@@ -167,15 +177,15 @@ export const SpendingHeatmapWidget = () => {
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 20,
+        padding: 24,
         marginHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 32,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 4,
+        fontSize: 17,
         fontFamily: 'Geist-Bold',
+        marginBottom: 4,
+        letterSpacing: -0.5,
     },
     header: {
         flexDirection: 'row',
@@ -186,29 +196,30 @@ const styles = StyleSheet.create({
     subHeader: {
         fontSize: 13,
         color: '#8E8E93',
-        fontFamily: 'Geist-Regular',
+        fontFamily: 'Geist-Medium',
+        opacity: 0.7
     },
     amountBadge: {
         alignItems: 'flex-end',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 14,
     },
     amountText: {
         fontSize: 11,
         fontFamily: 'Geist-Medium',
-        opacity: 0.7
+        opacity: 0.7,
+        marginBottom: 2
     },
     amountValue: {
-        fontSize: 14,
+        fontSize: 15,
         fontFamily: 'Geist-Bold',
     },
     legendContainer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         alignItems: 'center',
-        marginTop: 12,
-        paddingRight: 8,
+        marginTop: 16,
         gap: 8,
     },
     legendGradient: {
@@ -216,12 +227,12 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     legendDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 3,
+        width: 12,
+        height: 12,
+        borderRadius: 4,
     },
     legendLabel: {
-        fontSize: 10,
+        fontSize: 11,
         fontFamily: 'Geist-Medium',
     }
 });

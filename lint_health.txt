@@ -1,8 +1,0 @@
-
-D:\Expense_Tracker\components\analytics\FinancialHealthWidget.tsx
-   10:9   warning  'width' is assigned a value but never used    @typescript-eslint/no-unused-vars
-   17:34  warning  'metrics' is assigned a value but never used  @typescript-eslint/no-unused-vars
-  118:11  warning  'alpha' is assigned a value but never used    @typescript-eslint/no-unused-vars
-
-✖ 3 problems (0 errors, 3 warnings)
-

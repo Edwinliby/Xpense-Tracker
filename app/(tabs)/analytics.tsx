@@ -15,7 +15,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Download, Map } from 'lucide-react-native';
+import { Download } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -121,13 +121,7 @@ export default function AnalyticsScreen() {
             <View style={[Styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 20 }]}>
                 <Text style={[Styles.title, { marginBottom: 0, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Analytics</Text>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <TouchableOpacity
-                        style={[styles.exportButton, { backgroundColor: Colors.surfaceHighlight, borderColor: Colors.border }]}
-                        onPress={() => router.push('/map')}
-                        activeOpacity={0.7}
-                    >
-                        <Map size={22} color={Colors.primary} />
-                    </TouchableOpacity>
+
 
                     <TouchableOpacity
                         style={[styles.exportButton, { backgroundColor: Colors.surfaceHighlight, borderColor: Colors.border }]}

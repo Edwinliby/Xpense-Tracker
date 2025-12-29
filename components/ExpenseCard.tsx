@@ -42,9 +42,6 @@ const ExpenseCardComponent: React.FC<ExpenseCardProps> = ({ transaction }) => {
                 lentTo: transaction.lentTo,
                 isRecurring: transaction.isRecurring?.toString(),
                 excludeFromBudget: transaction.excludeFromBudget?.toString(),
-                latitude: transaction.latitude?.toString(),
-                longitude: transaction.longitude?.toString(),
-                locationName: transaction.locationName
             }
         });
     };

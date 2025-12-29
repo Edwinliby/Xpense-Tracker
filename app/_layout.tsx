@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import 'react-native-reanimated';
+// import 'react-native-reanimated';
 import { ExpenseProvider } from '../store/expenseStore';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -116,8 +116,9 @@ function AppContent() {
             headerShown: false
           }}
         />
+        <Stack.Screen name="search" options={{ headerShown: false, animation: 'ios_from_right' }} />
 
-        <Stack.Screen name="trash" options={{ headerShown: false }} />
+        <Stack.Screen name="trash" options={{ headerShown: false, animation: 'ios_from_right' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </NavigationThemeProvider>

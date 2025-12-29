@@ -37,9 +37,6 @@ export const toSupabaseTransaction = (t: Transaction) => ({
   next_occurrence: t.nextOccurrence,
   parent_id: t.parentId,
   exclude_from_budget: t.excludeFromBudget,
-  latitude: t.latitude,
-  longitude: t.longitude,
-  location_name: t.locationName,
 });
 
 export const fromSupabaseTransaction = (t: any): Transaction => ({
@@ -64,9 +61,6 @@ export const fromSupabaseTransaction = (t: any): Transaction => ({
   nextOccurrence: t.next_occurrence,
   parentId: t.parent_id,
   excludeFromBudget: t.exclude_from_budget,
-  latitude: t.latitude,
-  longitude: t.longitude,
-  locationName: t.location_name,
 });
 
 export const toSupabaseCategory = (c: Category) => ({

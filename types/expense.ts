@@ -22,9 +22,6 @@ export interface Transaction {
   nextOccurrence?: string; // ISO string
   parentId?: string;
   excludeFromBudget?: boolean;
-  latitude?: number;
-  longitude?: number;
-  locationName?: string;
 }
 
 export interface Category {

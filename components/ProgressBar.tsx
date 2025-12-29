@@ -1,8 +1,7 @@
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-
-import { StyleProp, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 interface ProgressBarProps {
     progress: number; // 0 to 1
@@ -12,8 +11,6 @@ interface ProgressBarProps {
     style?: StyleProp<ViewStyle>;
     gradientColors?: [string, string, ...string[]];
 }
-
-import { LinearGradient } from 'expo-linear-gradient';
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
     progress,

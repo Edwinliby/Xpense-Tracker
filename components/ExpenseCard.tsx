@@ -65,7 +65,7 @@ const ExpenseCardComponent: React.FC<ExpenseCardProps> = ({ transaction }) => {
         if (categoryData) return [categoryData.color, categoryData.color + 'CC'];
         if (type === 'income') return [Colors.success, Colors.successLight];
         return [Colors.danger, Colors.dangerLight];
-    }, [type, categoryData, Colors.success, Colors.danger]);
+    }, [type, categoryData, Colors.success, Colors.danger, Colors.successLight, Colors.dangerLight]);
 
     const amountColor = useMemo(() => {
         if (type === 'income') return Colors.success;

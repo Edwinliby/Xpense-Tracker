@@ -14,7 +14,7 @@ import * as Sharing from 'expo-sharing';
 import { debounce } from 'lodash';
 import * as Icons from 'lucide-react-native';
 import { Calendar, Download, Monitor, Moon, Sun, Trash2, X } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,6 +42,7 @@ export default function SettingsScreen() {
 
     const [budgetInput, setBudgetInput] = useState('');
     const [incomeInput, setIncomeInput] = useState('');
+    const [, setIsSaving] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showAddCategory, setShowAddCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -50,15 +51,15 @@ export default function SettingsScreen() {
     const [showIconPicker, setShowIconPicker] = useState(false);
     const [showColorPicker, setShowColorPicker] = useState(false);
 
-    const [isSaving, setIsSaving] = useState(false);
+
 
     useEffect(() => {
         setBudgetInput(budget.toString());
         setIncomeInput(income.toString());
     }, [budget, income]);
 
-    const debouncedSaveBudget = useCallback(
-        debounce((value: string) => {
+    const debouncedSaveBudget = React.useMemo(
+        () => debounce((value: string) => {
             const parsed = value.trim() === '' ? 0 : parseFloat(value);
             if (!isNaN(parsed)) {
                 setIsSaving(true);
@@ -70,8 +71,8 @@ export default function SettingsScreen() {
         [setBudget]
     );
 
-    const debouncedSaveIncome = useCallback(
-        debounce((value: string) => {
+    const debouncedSaveIncome = React.useMemo(
+        () => debounce((value: string) => {
             const parsed = value.trim() === '' ? 0 : parseFloat(value);
             if (!isNaN(parsed)) {
                 setIsSaving(true);

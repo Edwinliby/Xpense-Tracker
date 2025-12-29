@@ -1,5 +1,4 @@
 const tintColorLight = "#0D9488"; // Teal 600
-const tintColorDark = "#F97316"; // Orange 500
 
 export const Colors = {
   light: {

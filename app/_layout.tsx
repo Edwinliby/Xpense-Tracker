@@ -68,7 +68,7 @@ function AppContent() {
       // Redirect away from the sign-in page.
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments]);
+  }, [session, loading, segments, router]);
 
   if (loading) {
     return (

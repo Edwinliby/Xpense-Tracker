@@ -1,9 +1,9 @@
 import { CategoryPieChartWidget } from '@/components/analytics/CategoryPieChartWidget';
 import { DayOfWeekWidget } from '@/components/analytics/DayOfWeekWidget';
+import { FinancialHealthWidget } from '@/components/analytics/FinancialHealthWidget';
 import { FinancialKPIsWidget } from '@/components/analytics/FinancialKPIsWidget';
 import { MonthComparisonWidget } from '@/components/analytics/MonthComparisonWidget';
 import { QuickInsightsWidget } from '@/components/analytics/QuickInsightsWidget';
-import { SpendingHeatmapWidget } from '@/components/analytics/SpendingHeatmapWidget';
 import { SpendingTrendsWidget } from '@/components/analytics/SpendingTrendsWidget';
 import { TopCategoriesWidget } from '@/components/analytics/TopCategoriesWidget';
 import { useStyles } from '@/constants/Styles';
@@ -13,7 +13,6 @@ import { useExpense } from '@/store/expenseStore';
 import { format } from 'date-fns';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
-import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { Download } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -21,7 +20,7 @@ import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AnalyticsScreen() {
-    const router = useRouter();
+
     const Styles = useStyles();
     const Colors = useThemeColor();
     const [refreshing, setRefreshing] = useState(false);
@@ -100,7 +99,7 @@ export default function AnalyticsScreen() {
                     dialogTitle: `Share ${fileName}`
                 });
 
-            } catch (renameError: any) {
+            } catch {
                 // Fallback: Share original raw file so user gets data at least
                 await Sharing.shareAsync(uri, {
                     UTI: '.pdf',
@@ -119,7 +118,12 @@ export default function AnalyticsScreen() {
     return (
         <SafeAreaView style={Styles.container}>
             <View style={[Styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 20 }]}>
-                <Text style={[Styles.title, { marginBottom: 0, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Analytics</Text>
+                <View>
+                    <Text style={[Styles.title, { marginBottom: 0, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Analytics</Text>
+                    <Text style={{ fontFamily: 'Geist-Medium', fontSize: 14, color: Colors.textSecondary, marginTop: -2 }}>
+                        {format(new Date(), 'MMMM yyyy')}
+                    </Text>
+                </View>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
 
 
@@ -149,14 +153,14 @@ export default function AnalyticsScreen() {
                 }
                 contentContainerStyle={{ paddingBottom: 40 }}
             >
+                {/* Financial Health Score */}
+                <FinancialHealthWidget />
+
                 {/* Quick Insights */}
                 <QuickInsightsWidget />
 
                 {/* Financial KPIs */}
                 <FinancialKPIsWidget />
-
-                {/* Calendar Heatmap */}
-                <SpendingHeatmapWidget />
 
                 {/* Month Comparison */}
                 <MonthComparisonWidget />

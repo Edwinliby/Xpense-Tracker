@@ -1,4 +1,3 @@
-import { useThemeColor } from '@/hooks/useThemeColor';
 import { X } from 'lucide-react-native';
 import React, { useCallback } from 'react';
 import { Dimensions, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -14,7 +13,7 @@ interface ImageViewerProps {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const ImageViewer: React.FC<ImageViewerProps> = ({ visible, imageUri, onClose }) => {
-    const Colors = useThemeColor();
+
     const scale = useSharedValue(1);
     const savedScale = useSharedValue(1);
     const translateX = useSharedValue(0);

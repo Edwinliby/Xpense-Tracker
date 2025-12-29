@@ -2,7 +2,6 @@ import { Button } from '@/components/Button';
 import { ImageEditor } from '@/components/ImageEditor';
 import { ImageViewer } from '@/components/ImageViewer';
 import { Input } from '@/components/Input';
-import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -18,10 +17,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddTransactionScreen() {
     const router = useRouter();
-    const params = useLocalSearchParams();
-    const Styles = useStyles();
-    const Colors = useThemeColor();
+
     const { addTransaction, editTransaction, deleteTransaction, categories, currencySymbol } = useExpense();
+    const params = useLocalSearchParams();
+    const Colors = useThemeColor();
 
     const isEditing = !!params.id;
     const [amount, setAmount] = useState('');

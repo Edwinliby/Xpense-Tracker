@@ -2,7 +2,7 @@ import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, format, isWithinInterval, startOfMonth, subMonths } from 'date-fns';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { LineChart, lineDataItem } from 'react-native-gifted-charts';
 
@@ -10,7 +10,7 @@ export const SpendingTrendsWidget: React.FC = () => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, currencySymbol } = useExpense();
-    const [lastSixMonths, setLastSixMonths] = useState<any[]>([]);
+
 
     const trendsData = useMemo(() => {
         const months: lineDataItem[] = [];
@@ -33,7 +33,7 @@ export const SpendingTrendsWidget: React.FC = () => {
         return months;
     }, [transactions, Colors]);
 
-    const maxValue = Math.max(...trendsData.map(d => d.value || 0), 1);
+
     const avgSpending = trendsData.reduce((sum, d) => sum + (d.value || 0), 0) / trendsData.length;
 
     // Calculate responsive width

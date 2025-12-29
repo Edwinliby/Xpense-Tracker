@@ -1,6 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -10,7 +10,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const { signIn } = useAuth();
     const { colors } = useTheme();
-    const router = useRouter();
+
 
     const handleSignIn = async () => {
         if (!email || !password) {
@@ -63,7 +63,7 @@ export default function Login() {
                         </TouchableOpacity>
                     </Link>
                     <View style={styles.row}>
-                        <Text style={{ color: colors.text }}>Don't have an account? </Text>
+                        <Text style={{ color: colors.text }}>Don&apos;t have an account? </Text>
                         <Link href="/auth/register" asChild>
                             <TouchableOpacity>
                                 <Text style={[styles.link, { color: colors.primary }]}>Sign Up</Text>

@@ -52,7 +52,7 @@ export const DayOfWeekWidget: React.FC = () => {
         });
 
         return { barData: data, maxVal: maxValue };
-    }, [transactions, Colors]);
+    }, [transactions, Colors, currencySymbol]);
 
     const screenWidth = Dimensions.get('window').width;
     const chartWidth = screenWidth - 80;

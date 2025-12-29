@@ -42,7 +42,7 @@ export const TopCategoriesWidget: React.FC = () => {
                     icon: category?.icon || 'help-circle-outline',
                 };
             });
-    }, [transactions, categories]);
+    }, [transactions, categories, Colors.textSecondary]);
 
     if (topCategoriesData.length === 0) return null;
 

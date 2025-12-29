@@ -10,10 +10,10 @@ import { differenceInMonths, endOfMonth, format, getDaysInMonth, isWithinInterva
 import { router } from 'expo-router';
 import { ChevronLeft, ChevronRight, Search, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const screenWidth = Dimensions.get('window').width;
+
 
 export default function DashboardScreen() {
   const Styles = useStyles();
@@ -133,7 +133,7 @@ export default function DashboardScreen() {
       return { start: startOfMonth(date), end: endOfMonth(date) };
     }
     return { start: startOfMonth(now), end: endOfMonth(now) };
-  }, [selectedBar, selectedBarIndex, now, viewMode]);
+  }, [selectedBar, selectedBarIndex, now, viewMode, numberOfMonths]);
 
   const recentTransactions = useMemo(() => {
     return transactions.filter(t =>
@@ -175,7 +175,7 @@ export default function DashboardScreen() {
       });
     }
     return data;
-  }, [transactions]);
+  }, [transactions, Colors.text]);
 
   const currentMonthLineData = useMemo(() => getCumulativeDailyData(monthRange.start), [getCumulativeDailyData, monthRange]);
 
@@ -210,10 +210,7 @@ export default function DashboardScreen() {
     return data;
   }, [selectedYear, getEffectiveSpent, Colors.text]);
 
-  const currentYearSpent = useMemo(() =>
-    yearlyData.reduce((acc, item) => acc + item.value, 0),
-    [yearlyData]
-  );
+
 
   const currentYearTotalSpent = useMemo(() => {
     let total = 0;
@@ -305,11 +302,7 @@ export default function DashboardScreen() {
     [monthRange, getIncomeInInterval]
   );
 
-  const remainingBudget = useMemo(() => {
-    if (budget > 0) return budget - selectedMonthSpent;
-    const monthlyStaticIncome = isAfterIncomeStart(monthRange.start) ? income : 0;
-    return (monthlyStaticIncome + selectedMonthIncomeTransactions) - selectedMonthSpent;
-  }, [budget, income, selectedMonthSpent, isAfterIncomeStart, monthRange, selectedMonthIncomeTransactions]);
+
 
   const selectedMonthSaved = useMemo(() => {
     const monthlyStaticIncome = isAfterIncomeStart(monthRange.start) ? income : 0;
@@ -322,11 +315,7 @@ export default function DashboardScreen() {
 
   const displaySpent = useMemo(() => viewMode === 'yearly' ? currentYearTotalSpent : selectedMonthTotalSpent, [viewMode, currentYearTotalSpent, selectedMonthTotalSpent]);
 
-  const displayLabel = useMemo(() => {
-    if (viewMode === 'yearly') return `Spent in ${selectedYear}`;
-    if (selectedBar) return `Spent in ${selectedBar.label}`;
-    return 'Spent This Month';
-  }, [viewMode, selectedYear, selectedBar]);
+
 
   const displaySaved = useMemo(() => viewMode === 'yearly' ? currentYearSaved : selectedMonthSaved, [viewMode, currentYearSaved, selectedMonthSaved]);
 

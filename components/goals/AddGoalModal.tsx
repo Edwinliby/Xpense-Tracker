@@ -48,7 +48,6 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
             return;
         }
 
-        const prio = parseInt(priority) || 0;
         const finalPrio = priority.trim() === '' ? undefined : parseInt(priority);
 
         if (initialGoal) {

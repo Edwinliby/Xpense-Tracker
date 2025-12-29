@@ -29,33 +29,32 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { user } = useAuth();
 
     useEffect(() => {
+        const loadTheme = async () => {
+            try {
+                const savedTheme = await AsyncStorage.getItem('theme');
+                if (savedTheme) {
+                    setTheme(savedTheme as ThemeType);
+                }
+
+                if (user) {
+                    const { data, error } = await supabase
+                        .from('user_settings')
+                        .select('value')
+                        .eq('user_id', user.id)
+                        .eq('key', 'theme')
+                        .single();
+
+                    if (data && !error) {
+                        setTheme(data.value as ThemeType);
+                        await AsyncStorage.setItem('theme', data.value);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load theme', error);
+            }
+        };
         loadTheme();
     }, [user]);
-
-    const loadTheme = async () => {
-        try {
-            const savedTheme = await AsyncStorage.getItem('theme');
-            if (savedTheme) {
-                setTheme(savedTheme as ThemeType);
-            }
-
-            if (user) {
-                const { data, error } = await supabase
-                    .from('user_settings')
-                    .select('value')
-                    .eq('user_id', user.id)
-                    .eq('key', 'theme')
-                    .single();
-
-                if (data && !error) {
-                    setTheme(data.value as ThemeType);
-                    await AsyncStorage.setItem('theme', data.value);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load theme', error);
-        }
-    };
 
     const saveTheme = async (newTheme: ThemeType) => {
         try {

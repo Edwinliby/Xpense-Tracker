@@ -1,4 +1,3 @@
-import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import React, { useMemo } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
@@ -21,7 +20,7 @@ export const HomeChart: React.FC<HomeChartProps> = ({
   maxValue,
   currencySymbol,
 }) => {
-  const Styles = useStyles();
+
   const Colors = useThemeColor();
 
   const chartConfig = useMemo(() => {

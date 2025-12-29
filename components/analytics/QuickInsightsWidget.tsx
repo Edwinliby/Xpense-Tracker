@@ -74,7 +74,6 @@ export const QuickInsightsWidget: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Quick Insights</Text>
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -120,15 +119,8 @@ const styles = StyleSheet.create({
     container: {
         marginBottom: 32,
     },
-    sectionTitle: {
-        fontSize: 17,
-        fontFamily: 'Geist-Bold',
-        marginBottom: 20,
-        marginHorizontal: 24,
-        letterSpacing: 0.2,
-    },
     scrollContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: 22,
         gap: 16,
         paddingBottom: 8, // Space for shadow
     },

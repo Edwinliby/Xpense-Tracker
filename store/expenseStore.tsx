@@ -86,17 +86,26 @@ export const useExpense = () => {
     return context;
 };
 
+const defaultCategories: Category[] = [
+    { id: '1', name: 'Food', icon: 'Utensils', color: '#FF6B9D', isPredefined: true },
+    { id: '2', name: 'Transport', icon: 'Car', color: '#4FACFE', isPredefined: true },
+    { id: '3', name: 'Shopping', icon: 'ShoppingBag', color: '#A8EDEA', isPredefined: true },
+    { id: '4', name: 'Bills', icon: 'FileText', color: '#FFA07A', isPredefined: true },
+    { id: '5', name: 'Entertainment', icon: 'Gamepad2', color: '#C471F5', isPredefined: true },
+    { id: '6', name: 'Health', icon: 'Heart', color: '#FF6B6B', isPredefined: true },
+    { id: '7', name: 'Education', icon: 'BookOpen', color: '#34D399', isPredefined: true },
+    { id: '8', name: 'Other', icon: 'MoreHorizontal', color: '#FBBF24', isPredefined: true },
+];
+
+const saveData = async (key: string, value: any) => {
+    try {
+        await AsyncStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+        console.error(`Failed to save ${key}`, e);
+    }
+};
+
 export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const defaultCategories: Category[] = [
-        { id: '1', name: 'Food', icon: 'Utensils', color: '#FF6B9D', isPredefined: true },
-        { id: '2', name: 'Transport', icon: 'Car', color: '#4FACFE', isPredefined: true },
-        { id: '3', name: 'Shopping', icon: 'ShoppingBag', color: '#A8EDEA', isPredefined: true },
-        { id: '4', name: 'Bills', icon: 'FileText', color: '#FFA07A', isPredefined: true },
-        { id: '5', name: 'Entertainment', icon: 'Gamepad2', color: '#C471F5', isPredefined: true },
-        { id: '6', name: 'Health', icon: 'Heart', color: '#FF6B6B', isPredefined: true },
-        { id: '7', name: 'Education', icon: 'BookOpen', color: '#34D399', isPredefined: true },
-        { id: '8', name: 'Other', icon: 'MoreHorizontal', color: '#FBBF24', isPredefined: true },
-    ];
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [trash, setTrash] = useState<Transaction[]>([]);
@@ -239,7 +248,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             distributeFundsToGoals();
         }, 500);
         return () => clearTimeout(timer);
-    }, [transactions, income, incomeStartDate, goals.length, goals.map(g => g.targetAmount).join(','), distributeFundsToGoals]);
+    }, [transactions, income, incomeStartDate, goals.length, goals, distributeFundsToGoals]);
     // ^ Deep check on goal targets/length to avoid loop on 'currentAmount' update
 
 
@@ -281,15 +290,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return () => clearInterval(interval);
     }, []);
 
-    const saveData = async (key: string, value: any) => {
-        try {
-            await AsyncStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            console.error(`Failed to save ${key}`, e);
-        }
-    };
 
-    const addToQueue = async (action: Omit<SyncAction, 'id' | 'timestamp'>) => {
+
+    const addToQueue = useCallback(async (action: Omit<SyncAction, 'id' | 'timestamp'>) => {
         const newAction: SyncAction = {
             ...action,
             id: Date.now().toString() + Math.random().toString().slice(2, 5),
@@ -300,7 +303,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             saveData('syncQueue', updated);
             return updated;
         });
-    };
+    }, []);
 
     const processQueue = useCallback(async () => {
         if (!user || syncQueue.length === 0) return;
@@ -574,7 +577,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             return hasChanges ? updated : prev;
         });
-    }, []);
+    }, [isOffline, user, addToQueue]);
 
     const checkBudgetAndNotify = useCallback(async (currentTransactions: Transaction[], currentBudget: number, currentIncome: number) => {
         if (currentBudget === 0) return;
@@ -597,17 +600,16 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         const percentage = (spent / currentBudget) * 100;
         let newLevel: 'warning' | 'danger' | null = null;
-        let title = '';
-        let body = '';
+
 
         if (percentage >= 100) {
             newLevel = 'danger';
-            title = 'Budget Exceeded!';
-            body = `You've exceeded your budget of ${currencySymbol}${currentBudget}.`;
+            // title = 'Budget Exceeded!';
+            // body = `You've exceeded your budget of ${currencySymbol}${currentBudget}.`;
         } else if (percentage >= 90) {
             newLevel = 'warning';
-            title = 'Budget Alert';
-            body = `You've used ${Math.round(percentage)}% of your budget. Less than 10% remaining.`;
+            // title = 'Budget Alert';
+            // body = `You've used ${Math.round(percentage)}% of your budget. Less than 10% remaining.`;
         }
 
         if (newLevel && newLevel !== notifiedLevel) {
@@ -617,7 +619,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             // Reset if we are back to safe zone (e.g. deleted transaction)
             await AsyncStorage.removeItem(notifiedKey);
         }
-    }, [currencySymbol]);
+    }, []);
 
     const processRecurringTransactions = useCallback(async (currentTransactions: Transaction[]) => {
         const now = new Date();
@@ -691,7 +693,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     }, [user, checkAchievements]);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             const storedTransactions = await AsyncStorage.getItem('transactions');
             const storedTrash = await AsyncStorage.getItem('trash');
@@ -851,18 +853,18 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, processRecurringTransactions]);
 
     useEffect(() => {
         loadData();
-    }, [user]);
+    }, [loadData]);
 
     // Trigger queue processing when user becomes available or queue changes (and we are online)
     useEffect(() => {
         if (user && !isOffline && syncQueue.length > 0) {
             processQueue();
         }
-    }, [user, isOffline]); // syncQueue in deps might cause loops if processQueue updates it, but processQueue handles that.
+    }, [user, isOffline, syncQueue.length, processQueue]);
 
 
     const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
@@ -891,7 +893,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [transactions, checkAchievements, user, processRecurringTransactions, checkBudgetAndNotify, budget, income, isOffline]);
+    }, [transactions, checkAchievements, user, processRecurringTransactions, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
 
     const editTransaction = useCallback(async (id: string, updates: Partial<Transaction>) => {
         let updatedTransaction: Transaction | undefined;
@@ -960,7 +962,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [transactions, checkAchievements, user, checkBudgetAndNotify, budget, income, isOffline]);
+    }, [transactions, checkAchievements, user, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
 
     const deleteTransaction = useCallback(async (id: string) => {
         let deletedTransaction: Transaction | undefined;
@@ -1018,7 +1020,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, checkBudgetAndNotify, budget, income, isOffline]);
+    }, [user, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
 
     const restoreTransaction = useCallback(async (id: string) => {
         let restoredTransaction: Transaction | undefined;
@@ -1048,7 +1050,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, checkBudgetAndNotify, budget, income, isOffline]);
+    }, [user, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
 
     const permanentDeleteTransaction = useCallback(async (id: string) => {
         setTrash(prev => {
@@ -1067,7 +1069,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, isOffline]);
+    }, [user, isOffline, addToQueue]);
 
     const emptyTrash = useCallback(async () => {
         setTrash([]);
@@ -1120,7 +1122,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, isOffline]);
+    }, [user, isOffline, addToQueue]);
 
     const addGoal = useCallback((goalData: Omit<SavingsGoal, 'id' | 'currentAmount' | 'isCompleted'>) => {
         const { priority, ...rest } = goalData;
@@ -1183,7 +1185,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, isOffline]);
+    }, [user, isOffline, addToQueue]);
 
     const deleteCategory = useCallback(async (id: string) => {
         setCategories(prev => {
@@ -1207,7 +1209,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [categories, user, isOffline]);
+    }, [categories, user, isOffline, addToQueue]);
 
     const setBudget = useCallback((amount: number) => {
         setBudgetState(amount);
@@ -1224,7 +1226,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 });
             }
         }
-    }, [user, isOffline]);
+    }, [user, isOffline, addToQueue]);
 
     const setIncome = useCallback((amount: number) => {
         setIncomeState(amount);
@@ -1241,7 +1243,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 });
             }
         }
-    }, [user, isOffline]);
+    }, [user, isOffline, addToQueue]);
 
     const setIncomeStartDate = useCallback((date: string | null) => {
         setIncomeStartDateState(date);
@@ -1274,7 +1276,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, isOffline]);
+    }, [user, isOffline, addToQueue]);
 
     const setCurrency = useCallback(async (cur: string) => {
         if (cur === currency) return;
@@ -1348,7 +1350,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } finally {
             setLoading(false);
         }
-    }, [currency, budget, income, transactions, trash, user, isOffline]);
+    }, [currency, budget, income, transactions, trash, user, isOffline, addToQueue]);
 
     const resetCategories = useCallback(() => {
         setCategories(defaultCategories);
@@ -1377,7 +1379,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             return updated;
         });
-    }, [user, isOffline]);
+    }, [user, isOffline, addToQueue]);
 
     const clearNewlyUnlockedAchievement = useCallback(() => {
         setNewlyUnlockedAchievement(null);

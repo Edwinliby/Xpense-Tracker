@@ -116,7 +116,14 @@ export const FinancialHealthWidget: React.FC = () => {
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.container}>
             <LinearGradient
                 colors={isGood ? [Colors.surface, Colors.surfaceHighlight] : [Colors.surface, Colors.surface]}
-                style={[styles.card, Styles.shadow, { borderColor: isGood ? color + '40' : 'rgba(255,255,255,0.05)' }]}
+                style={[
+                    styles.card,
+                    Styles.shadow,
+                    {
+                        borderColor: isGood ? color + '40' : Colors.border,
+                        backgroundColor: Colors.surface
+                    }
+                ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             >
@@ -137,6 +144,7 @@ export const FinancialHealthWidget: React.FC = () => {
                                 r={radius}
                                 strokeWidth={strokeWidth}
                                 strokeOpacity={0.8}
+                                fill="none"
                             />
                             <AnimatedCircle
                                 stroke="url(#scoreGrad)"
@@ -149,6 +157,7 @@ export const FinancialHealthWidget: React.FC = () => {
                                 rotation="-90"
                                 origin={`${size / 2}, ${size / 2}`}
                                 animatedProps={animatedCircleProps}
+                                fill="none"
                             />
                         </Svg>
                         <View style={styles.absoluteCenter}>

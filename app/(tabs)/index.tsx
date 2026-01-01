@@ -13,8 +13,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
-
 export default function DashboardScreen() {
   const Styles = useStyles();
   const Colors = useThemeColor();
@@ -64,11 +62,12 @@ export default function DashboardScreen() {
 
 
   // --- Data Helpers ---
-  const getSpentInInterval = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean }) => {
+  const getSpentInInterval = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean; excludeRecurring?: boolean }) => {
     return transactions
       .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end }))
       .filter(t => !(t.isLent && t.isPaidBack))
       .filter(t => options?.includeExcluded ? true : !t.excludeFromBudget)
+      .filter(t => options?.excludeRecurring ? (!t.isRecurring && !t.recurrenceInterval) : true)
       .reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
@@ -90,7 +89,7 @@ export default function DashboardScreen() {
     return false;
   }, [incomeStartDate]);
 
-  const getEffectiveSpent = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean }) => {
+  const getEffectiveSpent = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean; excludeRecurring?: boolean }) => {
     return getSpentInInterval(start, end, options);
   }, [getSpentInInterval]);
 
@@ -194,8 +193,13 @@ export default function DashboardScreen() {
     for (let i = 0; i < 12; i++) {
       const monthStart = startOfMonth(new Date(selectedYear, i, 1));
       const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
-      // Show ALL spending for the year in the chart
-      const value = getEffectiveSpent(monthStart, monthEnd);
+
+      // Check if this month is strictly in the future relative to current month
+      const isFutureMonth = monthStart > endOfMonth(now);
+
+      // Show spending for the year in the chart
+      // If strictly future month, value is 0 (don't show projections)
+      const value = isFutureMonth ? 0 : getEffectiveSpent(monthStart, monthEnd);
       data.push({
         value,
         date: format(monthStart, 'MMM'),
@@ -208,7 +212,7 @@ export default function DashboardScreen() {
       });
     }
     return data;
-  }, [selectedYear, getEffectiveSpent, Colors.text]);
+  }, [selectedYear, getEffectiveSpent, Colors.text, now]);
 
 
 
@@ -218,11 +222,14 @@ export default function DashboardScreen() {
       const monthStart = startOfMonth(new Date(selectedYear, i, 1));
       const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
 
+      // Skip future months
+      if (monthStart > endOfMonth(now)) continue;
+
       // Show ALL spending for the year in total text
       total += getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true });
     }
     return total;
-  }, [selectedYear, getEffectiveSpent]);
+  }, [selectedYear, getEffectiveSpent, now]);
 
   // NEW: Calculate spent ONLY for active budget months (for Budget Bar)
   const activeYearlyBudgetSpent = useMemo(() => {
@@ -230,12 +237,16 @@ export default function DashboardScreen() {
     for (let i = 0; i < 12; i++) {
       const monthStart = startOfMonth(new Date(selectedYear, i, 1));
       const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
+
+      // Skip future months
+      if (monthStart > endOfMonth(now)) continue;
+
       if (isAfterIncomeStart(monthStart)) {
         total += getEffectiveSpent(monthStart, monthEnd); // Excludes 'excluded' txns
       }
     }
     return total;
-  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart]);
+  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart, now]);
 
   // NEW: Calculate total spent ONLY for active budget months (for Remaining amount)
   const activeYearlyTotalSpent = useMemo(() => {
@@ -243,12 +254,16 @@ export default function DashboardScreen() {
     for (let i = 0; i < 12; i++) {
       const monthStart = startOfMonth(new Date(selectedYear, i, 1));
       const monthEnd = endOfMonth(new Date(selectedYear, i, 1));
+
+      // Skip future months
+      if (monthStart > endOfMonth(now)) continue;
+
       if (isAfterIncomeStart(monthStart)) {
         total += getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true }); // Includes 'excluded' txns
       }
     }
     return total;
-  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart]);
+  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart, now]);
 
   const maxYearlyValue = useMemo(() => {
     return Math.max(...yearlyData.map(d => d.value), 100);
@@ -333,21 +348,6 @@ export default function DashboardScreen() {
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={[styles.pillContainer, { backgroundColor: Colors.surfaceHighlight }]}>
-              <TouchableOpacity
-                style={[styles.pillButton, viewMode === 'monthly' && { backgroundColor: Colors.primary }]}
-                onPress={() => setViewMode('monthly')}
-              >
-                <Text style={[styles.pillText, { color: viewMode === 'monthly' ? '#FFF' : Colors.textSecondary }]}>Month</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.pillButton, viewMode === 'yearly' && { backgroundColor: Colors.primary }]}
-                onPress={() => setViewMode('yearly')}
-              >
-                <Text style={[styles.pillText, { color: viewMode === 'yearly' ? '#FFF' : Colors.textSecondary }]}>Year</Text>
-              </TouchableOpacity>
-            </View>
-
             <TouchableOpacity
               onPress={() => router.push('/search')}
               style={[styles.iconButton, { backgroundColor: Colors.surfaceHighlight }]}
@@ -410,7 +410,7 @@ export default function DashboardScreen() {
 
 
         {/* --- Budget Progress Section --- */}
-        <View style={{ marginHorizontal: 16, marginBottom: 24 }}>
+        <View style={{ marginHorizontal: 16, marginBottom: 18 }}>
           {(!incomeStartDate || (viewMode === 'monthly' && !isAfterIncomeStart(monthRange.start)) || (viewMode === 'yearly' && activeMonthsCount === 0)) && budget === 0 ? (
             <TouchableOpacity
               onPress={() => router.push('/settings')}
@@ -491,28 +491,112 @@ export default function DashboardScreen() {
         </View>
 
         {/* --- Period Selector --- */}
-        <View style={styles.periodSelector}>
-          <TouchableOpacity
-            onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev - 1) : setSelectedBarIndex(prev => Math.max(prev - 1, 0))}
-            style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
-            disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
-          >
-            <ChevronLeft size={20} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
-          </TouchableOpacity>
+        <View style={{ marginBottom: 28, marginHorizontal: 16 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: Colors.surface,
+            borderRadius: 20,
+            padding: 6,
+            borderWidth: 1,
+            borderColor: Colors.border,
+          }}>
+            {/* View Mode Toggle (Left) */}
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: Colors.surfaceHighlight,
+              borderRadius: 14,
+              padding: 2
+            }}>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  backgroundColor: viewMode === 'monthly' ? Colors.background : 'transparent',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: viewMode === 'monthly' ? 0.1 : 0,
+                  shadowRadius: 2,
+                  borderWidth: 1,
+                  borderColor: viewMode === 'monthly' ? 'rgba(0,0,0,0.05)' : 'transparent',
+                }}
+                onPress={() => setViewMode('monthly')}
+              >
+                <Text style={{
+                  fontFamily: 'Geist-SemiBold',
+                  fontSize: 13,
+                  color: viewMode === 'monthly' ? Colors.text : Colors.textSecondary
+                }}>Month</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  backgroundColor: viewMode === 'yearly' ? Colors.background : 'transparent',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: viewMode === 'yearly' ? 0.1 : 0,
+                  shadowRadius: 2,
+                  borderWidth: 1,
+                  borderColor: viewMode === 'yearly' ? 'rgba(0,0,0,0.05)' : 'transparent',
+                }}
+                onPress={() => setViewMode('yearly')}
+              >
+                <Text style={{
+                  fontFamily: 'Geist-SemiBold',
+                  fontSize: 13,
+                  color: viewMode === 'yearly' ? Colors.text : Colors.textSecondary
+                }}>Year</Text>
+              </TouchableOpacity>
+            </View>
 
-          <Text style={[styles.periodText, { color: Colors.text }]}>
-            {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${selectedBar.year}` : 'Current Month')}
-          </Text>
+            {/* Date Navigator (Right) */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 6 }}>
+              <TouchableOpacity
+                onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev - 1) : setSelectedBarIndex(prev => Math.max(prev - 1, 0))}
+                style={{
+                  width: 32,
+                  height: 32,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: 10,
+                  backgroundColor: Colors.surfaceHighlight,
+                }}
+                disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
+              >
+                <ChevronLeft size={18} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev + 1) : setSelectedBarIndex(prev => Math.min(prev + 1, monthlyData.length - 1))}
-            style={[styles.chevronBtn, { backgroundColor: Colors.surfaceHighlight }]}
-            disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
-          >
-            <ChevronRight size={20} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
-          </TouchableOpacity>
+              <View style={{ minWidth: 100, alignItems: 'center' }}>
+                <Text style={{
+                  fontFamily: 'Geist-Bold',
+                  fontSize: 14,
+                  color: Colors.text
+                }}>
+                  {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${selectedBar.year}` : 'Current Month')}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev + 1) : setSelectedBarIndex(prev => Math.min(prev + 1, monthlyData.length - 1))}
+                style={{
+                  width: 32,
+                  height: 32,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: 10,
+                  backgroundColor: Colors.surfaceHighlight,
+                }}
+                disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
+              >
+                <ChevronRight size={18} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-
 
         {/* --- Owed Sections --- */}
         {(() => {

@@ -1,8 +1,6 @@
-import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { Transaction } from '@/store/expenseStore';
 import { format } from 'date-fns';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -14,127 +12,51 @@ interface DebtCreditCardProps {
     currencySymbol: string;
 }
 
-export const DebtCreditCard: React.FC<DebtCreditCardProps> = ({
-    type,
-    amount,
-    transactions,
-    onSettle,
-    currencySymbol,
-}) => {
-    const Styles = useStyles();
-    const Colors = useThemeColor();
-
-    const isOwed = type === 'owed';
-    const gradientColors = isOwed
-        ? [Colors.success, Colors.successLight]
-        : [Colors.danger, Colors.dangerLight];
-    const shadowColor = isOwed ? Colors.success : Colors.danger;
-    const title = isOwed ? 'Owed by Friends' : 'Debts';
-    const label = isOwed ? 'Total Owed to You' : 'Total You Owe';
-
-    if (amount <= 0) return null;
-
-    return (
-        <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>{title}</Text>
-            <LinearGradient
-                colors={gradientColors as [string, string]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.card, Styles.shadow, { shadowColor }]}
-            >
-                <View style={styles.header}>
-                    <Text style={styles.label}>{label}</Text>
-                    <Text style={styles.totalValue}>{currencySymbol}{amount.toLocaleString()}</Text>
-                </View>
-
-                <View style={styles.list}>
-                    {transactions.map((t) => (
-                        <View key={t.id} style={styles.row}>
-                            <View style={styles.info}>
-                                <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                    <Text style={styles.avatarText}>
-                                        {(isOwed ? t.lentTo : t.paidBy)?.[0]?.toUpperCase()}
-                                    </Text>
-                                </View>
-                                <View>
-                                    <Text style={styles.name}>{isOwed ? t.lentTo : t.paidBy}</Text>
-                                    <Text style={styles.date}>{format(new Date(t.date), 'MMM d')}</Text>
-                                </View>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                <Text style={styles.amountText}>{currencySymbol}{t.amount.toLocaleString()}</Text>
-                                <TouchableOpacity
-                                    style={styles.settleBtn}
-                                    onPress={() => onSettle(t.id)}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                >
-                                    <Text style={[styles.settleText, { color: isOwed ? Colors.success : Colors.danger }]}>
-                                        {isOwed ? 'Settle' : 'Repay'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                        </View>
-                    ))}
-                </View>
-            </LinearGradient>
-        </View>
-    );
-};
-
 const styles = StyleSheet.create({
     sectionContainer: {
         marginBottom: 24,
     },
-    sectionTitle: {
-        fontSize: 18,
-        fontFamily: 'Geist-Bold',
-        marginLeft: 20,
-        marginBottom: 12,
-    },
     card: {
         marginHorizontal: 16,
-        borderRadius: 24,
+        borderRadius: 20,
         padding: 20,
-        // Make it pop a bit more with border
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        // shadowColor set dynamically in component
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
         marginBottom: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.15)',
-        paddingBottom: 16,
     },
-    label: {
-        color: 'rgba(255,255,255,0.9)',
-        fontSize: 13,
+    headerLeft: {
+        gap: 4,
+    },
+    title: {
+        fontSize: 16,
+        fontFamily: 'Geist-Bold',
+    },
+    subtitle: {
+        fontSize: 12,
         fontFamily: 'Geist-Medium',
-        letterSpacing: 0.2,
     },
     totalValue: {
-        color: '#FFF',
-        fontSize: 24,
+        fontSize: 20,
         fontFamily: 'Geist-Bold',
         letterSpacing: -0.5,
     },
     list: {
-        gap: 12,
+        gap: 0, // handling gap with padding/borders
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)', // Lighter, more glass-like
-        padding: 12,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
     },
     info: {
         flexDirection: 'row',
@@ -142,51 +64,128 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     avatar: {
-        width: 38,
-        height: 38,
-        borderRadius: 14, // Squircle-ish
+        width: 40,
+        height: 40,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
     },
     avatarText: {
-        color: '#FFF',
         fontFamily: 'Geist-Bold',
         fontSize: 16,
     },
     name: {
-        color: '#FFF',
         fontFamily: 'Geist-SemiBold',
         fontSize: 14,
         marginBottom: 2,
     },
     date: {
-        color: 'rgba(255,255,255,0.7)',
         fontSize: 11,
         fontFamily: 'Geist-Regular',
     },
     amountText: {
-        color: '#FFF',
         fontFamily: 'Geist-Bold',
-        fontSize: 15,
-        marginRight: 4
+        fontSize: 14,
+        marginRight: 8
     },
     settleBtn: {
-        backgroundColor: '#FFF',
         paddingVertical: 6,
         paddingHorizontal: 12,
-        borderRadius: 10,
-        shadowColor: 'rgba(0,0,0,0.2)',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 1,
-        shadowRadius: 4,
-        elevation: 2,
+        borderRadius: 8,
+        borderWidth: 1,
     },
     settleText: {
         fontSize: 11,
         fontFamily: 'Geist-Bold',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
     },
 });
+
+export const DebtCreditCard: React.FC<DebtCreditCardProps> = ({
+    type,
+    amount,
+    transactions,
+    onSettle,
+    currencySymbol,
+}) => {
+
+    const Colors = useThemeColor();
+
+    const isOwed = type === 'owed';
+    const accentColor = isOwed ? Colors.success : Colors.danger;
+    const title = isOwed ? 'Owed to You' : 'Outstanding Debt';
+    const subtitle = isOwed ? 'Friends owe you' : 'You owe friends';
+
+    if (amount <= 0) return null;
+
+    return (
+        <View style={styles.sectionContainer}>
+            <View style={[
+                styles.card,
+                {
+                    backgroundColor: Colors.surface,
+                    borderColor: Colors.border,
+                    shadowColor: Colors.shadow,
+                }
+            ]}>
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View style={{ width: 3, height: 14, backgroundColor: accentColor, borderRadius: 2 }} />
+                            <Text style={[styles.title, { color: Colors.text }]}>{title}</Text>
+                        </View>
+                        <Text style={[styles.subtitle, { color: Colors.textSecondary, paddingLeft: 9 }]}>{subtitle}</Text>
+                    </View>
+                    <Text style={[styles.totalValue, { color: accentColor }]}>
+                        {currencySymbol}{amount.toLocaleString()}
+                    </Text>
+                </View>
+
+                <View style={styles.list}>
+                    {transactions.map((t, index) => {
+                        const isLast = index === transactions.length - 1;
+                        return (
+                            <View key={t.id} style={[
+                                styles.row,
+                                {
+                                    borderBottomColor: isLast ? 'transparent' : Colors.borderLight,
+                                    paddingBottom: isLast ? 0 : 12,
+                                    paddingTop: index === 0 ? 0 : 12
+                                }
+                            ]}>
+                                <View style={styles.info}>
+                                    <View style={[
+                                        styles.avatar,
+                                        { backgroundColor: isOwed ? Colors.success + '15' : Colors.danger + '15' }
+                                    ]}>
+                                        <Text style={[styles.avatarText, { color: accentColor }]}>
+                                            {(isOwed ? t.lentTo : t.paidBy)?.[0]?.toUpperCase()}
+                                        </Text>
+                                    </View>
+                                    <View>
+                                        <Text style={[styles.name, { color: Colors.text }]}>{isOwed ? t.lentTo : t.paidBy}</Text>
+                                        <Text style={[styles.date, { color: Colors.textSecondary }]}>{format(new Date(t.date), 'MMM d')}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={[styles.amountText, { color: Colors.text }]}>
+                                        {currencySymbol}{t.amount.toLocaleString()}
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={[styles.settleBtn, { borderColor: Colors.border, backgroundColor: Colors.surfaceHighlight }]}
+                                        onPress={() => onSettle(t.id)}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                        <Text style={[styles.settleText, { color: Colors.text }]}>
+                                            {isOwed ? 'Settle' : 'Pay'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        );
+                    })}
+                </View>
+            </View>
+        </View>
+    );
+};

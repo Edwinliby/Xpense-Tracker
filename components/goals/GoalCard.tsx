@@ -1,6 +1,7 @@
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SavingsGoal, useExpense } from '@/store/expenseStore';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -13,169 +14,172 @@ interface GoalCardProps {
 const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onLongPress }) => {
     const { currencySymbol } = useExpense();
     const Colors = useThemeColor();
-    // Debug logging
-
 
     const progress = Math.min(Math.max(0, goal.currentAmount / goal.targetAmount), 1);
     const progressPercent = Math.round(progress * 100);
     const remaining = goal.targetAmount - goal.currentAmount;
 
+    // Helper to dim color for background tint
+    const hexToRgba = (hex: string, alpha: number) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
     return (
         <TouchableOpacity
-            style={[styles.card, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}
             onPress={onPress}
             onLongPress={onLongPress}
-            activeOpacity={0.7}
+            activeOpacity={0.9}
+            style={[styles.container, {
+                shadowColor: goal.color,
+                backgroundColor: Colors.surface,
+            }]}
         >
-            <View style={styles.header}>
-                <View style={[styles.iconContainer, { backgroundColor: goal.color }]}>
-                    <Ionicons name={goal.icon as any} size={24} color="white" />
-                </View>
-                <View style={styles.titleContainer}>
-                    <Text style={[styles.name, { color: Colors.text }]} numberOfLines={1}>{goal.name}</Text>
-                    <View style={styles.priorityRow}>
-                        {goal.priority !== undefined && goal.priority < 999 && (
-                            <View style={[styles.priorityBadge, { backgroundColor: Colors.surfaceHighlight }]}>
-                                <Text style={[styles.priorityText, { color: Colors.textSecondary }]}>#{goal.priority}</Text>
-                            </View>
-                        )}
-                        <Text style={[styles.target, { color: Colors.textSecondary }]}>
+            <View style={styles.cardContent}>
+                {/* Header: Icon & Priority */}
+                <View style={styles.headerRow}>
+                    <View style={[styles.iconBox, { backgroundColor: hexToRgba(goal.color, 0.15) }]}>
+                        <Ionicons name={goal.icon as any} size={24} color={goal.color} />
+                    </View>
+
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={[styles.goalName, { color: Colors.text }]} numberOfLines={1}>
+                                {goal.name}
+                            </Text>
+                            {/* Completion Badge or Priority */}
+                            {goal.isCompleted ? (
+                                <View style={[styles.badge, { backgroundColor: Colors.success }]}>
+                                    <Ionicons name="checkmark" size={10} color="white" />
+                                    <Text style={styles.badgeText}>Done</Text>
+                                </View>
+                            ) : (
+                                goal.priority !== undefined && goal.priority < 999 && (
+                                    <View style={[styles.badge, { backgroundColor: Colors.surfaceHighlight }]}>
+                                        <Text style={[styles.badgeText, { color: Colors.textSecondary, fontSize: 10 }]}>#{goal.priority}</Text>
+                                    </View>
+                                )
+                            )}
+                        </View>
+                        <Text style={[styles.targetText, { color: Colors.textSecondary }]}>
                             Target: {currencySymbol}{goal.targetAmount.toLocaleString()}
                         </Text>
                     </View>
                 </View>
-                {goal.isCompleted && (
-                    <View style={styles.completedBadge}>
-                        <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+
+                {/* Progress Section */}
+                <View style={styles.progressSection}>
+                    <View style={styles.progressLabels}>
+                        <Text style={[styles.savedAmount, { color: Colors.text }]}>
+                            {currencySymbol}{goal.currentAmount.toLocaleString()}
+                        </Text>
+                        <Text style={[styles.percentText, { color: goal.color }]}>
+                            {progressPercent}%
+                        </Text>
                     </View>
-                )}
-            </View>
 
-            <View style={styles.progressContainer}>
-                <View style={styles.progressTextRow}>
-                    <Text style={[styles.currentAmount, { color: Colors.text }]}>{currencySymbol}{goal.currentAmount.toLocaleString()}</Text>
-                    <Text style={[styles.percentage, { color: Colors.textSecondary }]}>{progressPercent}%</Text>
+                    <View style={[styles.progressBarBase, { backgroundColor: Colors.surfaceHighlight }]}>
+                        <LinearGradient
+                            colors={[goal.color, hexToRgba(goal.color, 0.8)]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[styles.progressBarFill, { width: `${progressPercent}%` }]}
+                        />
+                    </View>
+
+                    <Text style={[styles.remainingText, { color: Colors.textSecondary }]}>
+                        {goal.isCompleted
+                            ? 'You did it!'
+                            : `${currencySymbol}${remaining.toLocaleString()} more to go`}
+                    </Text>
                 </View>
-
-                {/* Custom Progress Bar */}
-                <View style={[styles.progressBarBackground, { backgroundColor: Colors.surfaceHighlight }]}>
-                    <View
-                        style={[
-                            styles.progressBarFill,
-                            {
-                                width: `${progressPercent}%`,
-                                backgroundColor: goal.color || Colors.primary
-                            }
-                        ]}
-                    />
-                </View>
-
-                <Text style={[styles.remainingText, { color: Colors.textSecondary }]}>
-                    {remaining > 0 ? `${currencySymbol}${remaining.toLocaleString()} left to save` : 'Goal Reached!'}
-                </Text>
             </View>
         </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
-    card: {
+    container: {
         borderRadius: 24,
-        padding: 20,
-        marginVertical: 10,
-        shadowOffset: { width: 0, height: 4 },
+        marginVertical: 8,
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
+        shadowRadius: 16,
+        elevation: 6, // Android shadow
     },
-    header: {
+    cardContent: {
+        padding: 20,
+    },
+    headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 20,
     },
-    iconContainer: {
-        width: 52,
-        height: 52,
-        borderRadius: 20,
+    iconBox: {
+        width: 50,
+        height: 50,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 2,
     },
-    titleContainer: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    name: {
-        fontSize: 18,
-        fontFamily: 'Geist-SemiBold',
-        marginBottom: 4,
-        letterSpacing: -0.3,
-    },
-    priorityRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    priorityBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-    },
-    priorityText: {
-        fontSize: 11,
+    goalName: {
+        fontSize: 17,
         fontFamily: 'Geist-Bold',
+        marginBottom: 2,
     },
-    target: {
+    targetText: {
         fontSize: 13,
         fontFamily: 'Geist-Medium',
-        opacity: 0.8,
+        marginTop: 2,
     },
-    completedBadge: {
-        marginLeft: 12,
+    badge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 4,
     },
-    progressContainer: {
-        marginTop: 4,
+    badgeText: {
+        color: 'white',
+        fontSize: 11,
+        fontFamily: 'Geist-Bold',
+        textTransform: 'uppercase',
     },
-    progressTextRow: {
+    progressSection: {
+        gap: 8,
+    },
+    progressLabels: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 10,
-        alignItems: 'flex-end',
+        alignItems: 'baseline',
     },
-    currentAmount: {
-        fontSize: 22,
+    savedAmount: {
+        fontSize: 24,
         fontFamily: 'Geist-Bold',
         letterSpacing: -0.5,
     },
-    percentage: {
-        fontSize: 15,
-        fontFamily: 'Geist-Medium',
-        marginBottom: 2,
+    percentText: {
+        fontSize: 16,
+        fontFamily: 'Geist-Bold',
     },
-    progressBarBackground: {
-        height: 10,
-        borderRadius: 5,
+    progressBarBase: {
+        height: 12,
+        borderRadius: 6,
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        borderRadius: 5,
+        borderRadius: 6,
     },
     remainingText: {
-        fontSize: 13,
-        fontFamily: 'Geist-Regular',
-        marginTop: 10,
+        fontSize: 12,
+        fontFamily: 'Geist-Medium',
         textAlign: 'right',
-        opacity: 0.8,
+        marginTop: 4,
     },
-
 });
 
 export default GoalCard;

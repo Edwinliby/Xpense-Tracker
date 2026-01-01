@@ -73,7 +73,7 @@ export const HomeChart: React.FC<HomeChartProps> = ({
         textColor={Colors.text}
         textFontSize={10}
         textShiftY={-6}
-        xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 10, fontFamily: 'Geist-Medium' }}
+        xAxisLabelTextStyle={{ color: Colors.text, fontSize: 11, fontFamily: 'Geist-Medium' }}
 
         // Interaction / Pointer
         pointerConfig={{

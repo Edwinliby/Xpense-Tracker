@@ -635,8 +635,10 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (!t.nextOccurrence) continue;
             let nextDate = new Date(t.nextOccurrence);
 
-            // While next occurrence is within the next year
-            while (nextDate <= oneYearFromNow) {
+            // While next occurrence is in the past (due now or previously due)
+            // Fix: Do not pre-generate future months. Only generate if date <= now.
+            const now = new Date();
+            while (nextDate <= now) {
                 hasChanges = true;
 
 

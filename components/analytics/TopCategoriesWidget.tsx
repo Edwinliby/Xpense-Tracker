@@ -6,18 +6,17 @@ import * as Icons from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-export const TopCategoriesWidget: React.FC = () => {
+export const TopCategoriesWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, categories, currencySymbol } = useExpense();
 
     const topCategoriesData = useMemo(() => {
-        const now = new Date();
-        const start = startOfMonth(now);
-        const end = endOfMonth(now);
+        const start = startOfMonth(targetDate);
+        const end = endOfMonth(targetDate);
 
         const currentMonthExpenses = transactions.filter(
-            t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end })
+            t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end }) && !t.excludeFromBudget && !(t.isLent && t.isPaidBack)
         );
 
         const totalSpending = currentMonthExpenses.reduce((sum, t) => sum + t.amount, 0);
@@ -42,7 +41,7 @@ export const TopCategoriesWidget: React.FC = () => {
                     icon: category?.icon || 'help-circle-outline',
                 };
             });
-    }, [transactions, categories, Colors.textSecondary]);
+    }, [transactions, categories, Colors.textSecondary, targetDate]);
 
     if (topCategoriesData.length === 0) return null;
 

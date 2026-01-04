@@ -1,8 +1,8 @@
 import { AchievementUnlockModal } from '@/components/AchievementUnlockModal';
+import { BudgetWidget } from '@/components/BudgetWidget';
 import { DebtCreditCard } from '@/components/DebtCreditCard';
 import { ExpenseCard } from '@/components/ExpenseCard';
 import { HomeChart } from '@/components/HomeChart';
-import { ProgressBar } from '@/components/ProgressBar';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
@@ -38,7 +38,8 @@ export default function DashboardScreen() {
 
   // Calculate total months to display (from history start to now)
   const numberOfMonths = useMemo(() => {
-    const months = differenceInMonths(now, historyStartDate);
+    // We must compare start-of-months to ensure we don't undercount if historyStart is late in month (e.g. 30th) vs now (1st)
+    const months = differenceInMonths(startOfMonth(now), startOfMonth(historyStartDate));
     return Math.max(months, 2); // Ensure at least 3 months (0 to 2) are shown
   }, [now, historyStartDate]);
 
@@ -50,14 +51,76 @@ export default function DashboardScreen() {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
 
   // Update selectedBarIndex when numberOfMonths changes (e.g. new transactions or first load)
-  // taking care not to reset user selection if they are browsing, unless it's out of bounds?
-  // For now, simpler to snap to latest if the range expands significantly or on mount.
-  // Using a ref to track if it's the first load could help, but simply syncing to end if unset or creating a new default is okay.
+  // Instead of blindly resetting to "now", try to preserve the currently selected month/year.
   useEffect(() => {
-    // If the current index is out of sync (e.g. range grew), we might want to keep the "relative" month or reset to now.
-    // Let's reset to "now" (end of array) to ensure they see the current month by default.
-    setSelectedBarIndex(numberOfMonths);
-  }, [numberOfMonths]);
+    // If we have a currently selected bar, let's capture its date info
+    if (selectedBar) {
+      const currentLabel = selectedBar.label;
+      const currentYear = selectedBar.year;
+
+      // Find the new index in the updated monthlyData that matches this label/year
+      // We rely on monthlyData being dependent on 'numberOfMonths' so it should be fresh if we use it here?
+      // Actually monthlyData is a dependency of the effect below that updates selectedBar.
+      // But here we are setting the INDEX. We need to calculate what the index WOULD be.
+
+      // Recalculate the array of dates logic to find the index:
+      // monthlyData indices: 0 = oldest, numberOfMonths = newest (current)
+      // `subtract` value was: numberOfMonths - selectedBarIndex
+      // We want to find the new index such that: newNumberOfMonths - newIndex = oldSubtract? 
+      // No, that assumes relative position from NOW is constant. 
+      // If we added OLD data (history grew), 'numberOfMonths' increases.
+      // If we are looking at "Jan 2025" (current), subtract=0. index=newMax.
+      // If we are looking at "Jan 2023", and we added data for "Jan 2022", numberOfMonths increases.
+      // We want to keep looking at "Jan 2023".
+
+      // Let's use the date logic directly. 
+      // The date of the currently selected bar is:
+      // selectedDate = subMonths(now, (oldNumberOfMonths - oldSelectedBarIndex)) <- We don't have old values easily.
+
+      // Simpler: We know the selectedBar.year and selectedBar.label (MMM).
+      // We can search the NEW monthlyData for this combo in the next render cycle, OR calculate index now.
+
+      // Let's calculate the date of the PREVIOUSLY selected item using state that hasn't theoretically updated yet? 
+      // No, this effect runs AFTER render. 
+
+      // Best approach: Calculate the date we WANT to be at.
+      // We stored selectedBar in state. 
+      const targetDate = new Date(currentYear, ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(currentLabel), 1); // rough parse
+
+      // But we can just use differenceInMonths from 'now' to find the 'subtract' value.
+      const monthsDiff = differenceInMonths(now, targetDate);
+      if (monthsDiff >= 0 && monthsDiff <= numberOfMonths) {
+        // The new index should be:
+        const newIndex = numberOfMonths - monthsDiff;
+        if (newIndex !== selectedBarIndex) {
+          setSelectedBarIndex(newIndex);
+        }
+        return;
+      }
+    }
+
+    // If we couldn't match (maybe it's out of range now? or first load), default to latest.
+    // Only reset if we are "far" off or it's clearly a data expanded event where we want to snap?
+    // Actually, distinct check: if we are already at the max index (current month), we probably want to STAY at the max index.
+    // If numberOfMonths simply grew because we added old history, 'numberOfMonths' went from 5 to 20.
+    // If we were at index 5 (current), we want to be at index 20 (current).
+    // The logic above (monthsDiff=0) handles this -> newIndex = 20 - 0 = 20. Correct.
+
+    // If we were at index 0 (oldest, say 5 months ago), and we add 10 more months of history.
+    // numberOfMonths goes 5 -> 15.
+    // monthsDiff was 5. newIndex = 15 - 5 = 10.
+    // So we stay visually at the same month (5 months ago), instead of the NEW oldest (15 months ago). 
+    // This is the desired behavior! "Don't lose my place".
+
+    // So the logic holds.
+    // HOWEVER, `selectedBar` comes from `monthlyData[selectedBarIndex]`. 
+    // On the very first render, selectedBar is null. We set index to numberOfMonths.
+    if (!selectedBar) {
+      setSelectedBarIndex(numberOfMonths);
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numberOfMonths]); // Depend ONLY on numberOfMonths changing
 
 
 
@@ -103,15 +166,22 @@ export default function DashboardScreen() {
       const monthStart = startOfMonth(date);
       const monthEnd = endOfMonth(date);
       const value = getEffectiveSpent(monthStart, monthEnd);
+
+      // Smart Nav: Check for ANY activity (Expense OR Income), INCLUDING excluded ones.
+      const totalSpentIncExcluded = getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true });
+      const incomeVal = getIncomeInInterval(monthStart, monthEnd);
+      const hasActivity = totalSpentIncExcluded > 0 || incomeVal > 0;
+
       return {
         value,
         label: format(monthStart, 'MMM'),
         year: monthStart.getFullYear(),
         frontColor: subtract === 0 ? Colors.primary : Colors.textSecondary,
         gradientColor: subtract === 0 ? Colors.primaryHighlight : Colors.surfaceHighlight,
+        hasActivity, // Used for smart navigation
       };
     });
-  }, [now, numberOfMonths, getEffectiveSpent, Colors.primary, Colors.textSecondary, Colors.primaryHighlight, Colors.surfaceHighlight]);
+  }, [now, numberOfMonths, getEffectiveSpent, getIncomeInInterval, Colors.primary, Colors.textSecondary, Colors.primaryHighlight, Colors.surfaceHighlight]);
 
   // Sync selectedBar with selectedBarIndex
   useEffect(() => {
@@ -188,6 +258,36 @@ export default function DashboardScreen() {
   }, [currentMonthLineData, previousMonthLineData]);
 
   // --- Yearly Data ---
+  const handleYearlyPointPress = useCallback((item: any) => {
+    // item.date is "MMM" string. item.year (we need to pass year) is implicit from selectedYear.
+    // We need to switch to MONTHLY view and select this month.
+
+    // 1. Construct the date object for the clicked month
+    const monthIndex = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(item.label);
+    if (monthIndex === -1) return;
+
+    const targetDate = new Date(selectedYear, monthIndex);
+
+    // 2. Calculate the index for this date in the monthlyData array
+    // monthlyData is built from 'now' backwards. 
+    // index = numberOfMonths - differenceInMonths(now, targetDate)
+    const diff = differenceInMonths(now, targetDate);
+
+    // Check if within range
+    if (diff >= 0 && diff <= numberOfMonths) {
+      const newIndex = numberOfMonths - diff;
+
+      // 3. Update State
+      setSelectedBarIndex(newIndex);
+      setViewMode('monthly');
+    } else {
+      // Optional: if user clicks a month that is outside "available history" (e.g. older than oldest tx), 
+      // but we showed it in yearly view (with 0 value or similar)?
+      // If it has a value, it SHOULD be in history.
+      // The numberOfMonths should cover all effective spent.
+    }
+  }, [selectedYear, now, numberOfMonths]);
+
   const yearlyData = useMemo(() => {
     const data = [];
     for (let i = 0; i < 12; i++) {
@@ -209,10 +309,13 @@ export default function DashboardScreen() {
         textShiftY: -6,
         textShiftX: -4,
         textFontSize: 11,
+        // Interaction
+        onPress: () => handleYearlyPointPress({ label: format(monthStart, 'MMM'), value }),
+        // Ensure point is visible/interactable if it has value (or logic in chart component handled globally)
       });
     }
     return data;
-  }, [selectedYear, getEffectiveSpent, Colors.text, now]);
+  }, [selectedYear, getEffectiveSpent, Colors.text, now, handleYearlyPointPress]);
 
 
 
@@ -409,86 +512,18 @@ export default function DashboardScreen() {
         </View>
 
 
-        {/* --- Budget Progress Section --- */}
-        <View style={{ marginHorizontal: 16, marginBottom: 18 }}>
-          {(!incomeStartDate || (viewMode === 'monthly' && !isAfterIncomeStart(monthRange.start)) || (viewMode === 'yearly' && activeMonthsCount === 0)) && budget === 0 ? (
-            <TouchableOpacity
-              onPress={() => router.push('/settings')}
-              style={[styles.budgetPlaceholder, { backgroundColor: Colors.surfaceHighlight }]}
-            >
-              <View style={[styles.placeholderIcon, { backgroundColor: Colors.surface }]}>
-                <Wallet size={20} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.placeholderTitle, { color: Colors.text }]}>Start Tracking Savings</Text>
-                <Text style={[styles.placeholderText, { color: Colors.textSecondary }]}>Set a budget or income start date to unlock.</Text>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={[styles.budgetCard, {
-              backgroundColor: 'rgba(52, 199, 89, 0.08)',
-              borderColor: 'rgba(52, 199, 89, 0.2)',
-            }]}>
-              <View style={styles.budgetHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{ padding: 6, borderRadius: 8, backgroundColor: 'rgba(52, 199, 89, 0.15)' }}>
-                    <Wallet size={14} color={Colors.text} />
-                  </View>
-                  <Text style={[styles.budgetLabel, { color: Colors.textSecondary }]}>
-                    {viewMode === 'monthly' ? (budget > 0 ? 'Monthly Budget' : 'Net Income') : (budget > 0 ? `Yearly Budget (${activeMonthsCount}mo)` : 'Yearly Income')}
-                  </Text>
-                </View>
-                <Text style={[styles.budgetTotal, { color: Colors.text }]}>
-                  {currencySymbol}
-                  {viewMode === 'monthly'
-                    ? (budget > 0 ? budget.toLocaleString() : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions).toLocaleString())
-                    : (budget > 0 ? (budget * activeMonthsCount).toLocaleString() : annualIncome.toLocaleString())
-                  }
-                </Text>
-              </View>
-
-              <ProgressBar
-                progress={
-                  viewMode === 'monthly'
-                    ? (budget > 0 ? Math.min(selectedMonthSpent / budget, 1) : Math.min(selectedMonthSpent / ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions || 1), 1))
-                    : Math.min(activeYearlyBudgetSpent / (budget > 0 ? (budget * activeMonthsCount) : (annualIncome || 1)), 1)
-                }
-                gradientColors={(viewMode === 'monthly' ? (budget > 0 ? selectedMonthSpent > budget : selectedMonthSpent > ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions)) : (budget > 0 ? activeYearlyBudgetSpent > (budget * activeMonthsCount) : activeYearlyBudgetSpent > annualIncome)) ? [Colors.danger, '#FF6B6B'] : [Colors.success, '#34c759']}
-                height={8}
-                style={{ borderRadius: 4 }}
-              />
-
-              <View style={styles.budgetFooter}>
-                <Text style={{ color: Colors.textSecondary, fontSize: 11, fontFamily: 'Geist-Medium' }}>
-                  {Math.round((
-                    viewMode === 'monthly'
-                      ? (selectedMonthSpent / (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions || 1))) * 100
-                      : (activeYearlyBudgetSpent / (budget > 0 ? (budget * activeMonthsCount) : (annualIncome || 1))) * 100
-                  ))}% used
-                </Text>
-
-                {((viewMode === 'monthly' && selectedMonthSpent > (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))) ||
-                  (viewMode === 'yearly' && activeYearlyBudgetSpent > (budget > 0 ? (budget * activeMonthsCount) : annualIncome))) ? (
-                  <Text style={{ color: Colors.danger, fontSize: 11, fontFamily: 'Geist-SemiBold' }}>
-                    Over by {currencySymbol}
-                    {(viewMode === 'monthly'
-                      ? selectedMonthSpent - (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
-                      : activeYearlyBudgetSpent - (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
-                    ).toFixed(0)}
-                  </Text>
-                ) : (
-                  <Text style={{ color: Colors.text, fontSize: 11, fontFamily: 'Geist-SemiBold' }}>
-                    {currencySymbol}
-                    {(viewMode === 'monthly'
-                      ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions)) - selectedMonthSpent
-                      : (budget > 0 ? (budget * activeMonthsCount) : annualIncome) - activeYearlyBudgetSpent
-                    ).toFixed(0)} left
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
-        </View>
+        {/* --- Budget Widget Section --- */}
+        <BudgetWidget
+          spent={viewMode === 'monthly' ? selectedMonthSpent : activeYearlyBudgetSpent}
+          budget={viewMode === 'monthly'
+            ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
+            : (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
+          }
+          currencySymbol={currencySymbol}
+          viewMode={viewMode}
+          monthsCount={activeMonthsCount}
+          onPress={() => router.push('/settings')}
+        />
 
         {/* --- Period Selector --- */}
         <View style={{ marginBottom: 28, marginHorizontal: 16 }}>
@@ -556,7 +591,25 @@ export default function DashboardScreen() {
             {/* Date Navigator (Right) */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 6 }}>
               <TouchableOpacity
-                onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev - 1) : setSelectedBarIndex(prev => Math.max(prev - 1, 0))}
+                onPress={() => {
+                  if (viewMode === 'yearly') {
+                    setSelectedYear(prev => prev - 1);
+                  } else {
+                    // Smart Navigation: Go to previous ACTIVE month
+                    let newIndex = selectedBarIndex - 1;
+                    while (newIndex >= 0) {
+                      if (monthlyData[newIndex].hasActivity || newIndex === 0) {
+                        // Found active month OR reached the very beginning (always show oldest)
+                        setSelectedBarIndex(newIndex);
+                        break;
+                      }
+                      newIndex--;
+                    }
+                    if (newIndex < 0 && selectedBarIndex > 0) {
+                      setSelectedBarIndex(0);
+                    }
+                  }
+                }}
                 style={{
                   width: 32,
                   height: 32,
@@ -581,7 +634,23 @@ export default function DashboardScreen() {
               </View>
 
               <TouchableOpacity
-                onPress={() => viewMode === 'yearly' ? setSelectedYear(prev => prev + 1) : setSelectedBarIndex(prev => Math.min(prev + 1, monthlyData.length - 1))}
+                onPress={() => {
+                  if (viewMode === 'yearly') {
+                    setSelectedYear(prev => prev + 1);
+                  } else {
+                    // Smart Navigation: Go to next ACTIVE month
+                    let newIndex = selectedBarIndex + 1;
+                    const maxIndex = monthlyData.length - 1;
+                    while (newIndex <= maxIndex) {
+                      if (monthlyData[newIndex].hasActivity || newIndex === maxIndex) {
+                        // Found active month OR reached current/latest month (always show current)
+                        setSelectedBarIndex(newIndex);
+                        break;
+                      }
+                      newIndex++;
+                    }
+                  }
+                }}
                 style={{
                   width: 32,
                   height: 32,

@@ -71,13 +71,13 @@ export default function GoalsScreen() {
                             <View>
                                 <Text style={[styles.summaryLabel, { color: Colors.textSecondary }]}>TOTAL SAVED</Text>
                                 <Text style={[styles.summaryAmount, { color: Colors.text }]}>
-                                    {currencySymbol}{totalSaved.toLocaleString()}
+                                    {currencySymbol}{totalSaved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </Text>
                             </View>
                             <View>
                                 <Text style={[styles.summaryLabel, { color: Colors.textSecondary, textAlign: 'right' }]}>TOTAL TARGET</Text>
                                 <Text style={[styles.summaryAmount, { color: Colors.text, textAlign: 'right' }]}>
-                                    {currencySymbol}{totalTarget.toLocaleString()}
+                                    {currencySymbol}{totalTarget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </Text>
                             </View>
                         </View>

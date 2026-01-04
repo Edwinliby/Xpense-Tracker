@@ -6,18 +6,17 @@ import React, { useMemo } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 
-export const DayOfWeekWidget: React.FC = () => {
+export const DayOfWeekWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, currencySymbol } = useExpense();
 
     const { barData, maxVal } = useMemo(() => {
-        const now = new Date();
-        const start = startOfMonth(now);
-        const end = endOfMonth(now);
+        const start = startOfMonth(targetDate);
+        const end = endOfMonth(targetDate);
 
         const currentMonthExpenses = transactions.filter(
-            t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end })
+            t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end }) && !t.excludeFromBudget && !(t.isLent && t.isPaidBack)
         );
 
         const dayTotals = new Array(7).fill(0); // 0 = Sunday, 6 = Saturday
@@ -52,7 +51,7 @@ export const DayOfWeekWidget: React.FC = () => {
         });
 
         return { barData: data, maxVal: maxValue };
-    }, [transactions, Colors, currencySymbol]);
+    }, [transactions, Colors, currencySymbol, targetDate]);
 
     const screenWidth = Dimensions.get('window').width;
     const chartWidth = screenWidth - 80;

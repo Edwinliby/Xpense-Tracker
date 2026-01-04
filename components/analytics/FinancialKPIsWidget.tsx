@@ -6,19 +6,21 @@ import { Activity, Banknote, PiggyBank, Target } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-export const FinancialKPIsWidget: React.FC = () => {
+export const FinancialKPIsWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, budget, income, currencySymbol } = useExpense();
 
     const kpis = useMemo(() => {
-        const now = new Date();
-        const monthStart = startOfMonth(now);
-        const monthEnd = endOfMonth(now);
-        const currentDay = getDate(now);
+        const monthStart = startOfMonth(targetDate);
+        const monthEnd = endOfMonth(targetDate);
+        const currentDay = getDate(targetDate);
 
         const monthExpenses = transactions.filter(
-            t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
+            t => t.type === 'expense' &&
+                isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd }) &&
+                !t.excludeFromBudget &&
+                !(t.isLent && t.isPaidBack)
         );
 
         const monthIncome = transactions.filter(
@@ -63,7 +65,7 @@ export const FinancialKPIsWidget: React.FC = () => {
                 bg: budgetRemaining >= 0 ? Colors.success : Colors.danger,
             },
         ];
-    }, [transactions, budget, income, currencySymbol, Colors]);
+    }, [transactions, budget, income, currencySymbol, Colors, targetDate]);
 
     return (
         <View style={styles.container}>
@@ -85,7 +87,7 @@ export const FinancialKPIsWidget: React.FC = () => {
                         ]}
                     >
                         <View style={[styles.iconContainer, { backgroundColor: kpi.bg + '15' }]}>
-                            {React.createElement(kpi.icon, { size: 24, color: kpi.color })}
+                            {React.createElement(kpi.icon, { size: 18, color: kpi.color })}
                         </View>
                         <View>
                             <Text style={[styles.value, { color: Colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
@@ -104,12 +106,12 @@ export const FinancialKPIsWidget: React.FC = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 32,
+        marginBottom: 24, // Reduced from 32
     },
     sectionTitle: {
-        fontSize: 17,
+        fontSize: 15, // Reduced from 17
         fontFamily: 'Geist-Bold',
-        marginBottom: 20,
+        marginBottom: 12, // Reduced from 20
         marginHorizontal: 24,
         letterSpacing: 0.2,
     },
@@ -117,34 +119,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         paddingHorizontal: 24,
-        gap: 16,
+        gap: 12, // Reduced gap from 16
     },
     card: {
-        width: '47%', // Approx half with gap
-        flexGrow: 1, // Fill remaining space
-        padding: 20,
-        borderRadius: 24,
+        width: '48%',
+        flexGrow: 1,
+        padding: 14, // Reduced from 20
+        borderRadius: 20, // Reduced from 24
         flexDirection: 'column',
         justifyContent: 'space-between',
-        height: 140,
+        height: 100, // Reduced from 140
     },
     iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
+        width: 36, // Reduced from 48
+        height: 36,
+        borderRadius: 12, // Reduced from 16
         justifyContent: 'center',
         alignItems: 'center',
         alignSelf: 'flex-start',
-        marginBottom: 16,
+        marginBottom: 8, // Reduced from 16
     },
     value: {
-        fontSize: 22,
+        fontSize: 18, // Reduced from 22
         fontFamily: 'Geist-Bold',
-        marginBottom: 4,
+        marginBottom: 2, // Reduced from 4
         letterSpacing: -0.5,
     },
     label: {
-        fontSize: 12,
+        fontSize: 11, // Reduced from 12
         fontFamily: 'Geist-Medium',
         opacity: 0.7,
         textTransform: 'uppercase',

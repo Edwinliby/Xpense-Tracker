@@ -11,15 +11,14 @@ import Svg, { Circle, Defs, Stop, LinearGradient as SvgGradient } from 'react-na
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-export const FinancialHealthWidget: React.FC = () => {
+export const FinancialHealthWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, budget, income } = useExpense();
 
     const { score, level, color, tip, isGood } = useMemo(() => {
-        const now = new Date();
-        const monthStart = startOfMonth(now);
-        const monthEnd = endOfMonth(now);
+        const monthStart = startOfMonth(targetDate);
+        const monthEnd = endOfMonth(targetDate);
 
         const currentMonthTx = transactions.filter(t => {
             const date = new Date(t.date);
@@ -27,7 +26,7 @@ export const FinancialHealthWidget: React.FC = () => {
         });
 
         const monthExpenses = currentMonthTx
-            .filter(t => t.type === 'expense' && !t.excludeFromBudget)
+            .filter(t => t.type === 'expense' && !t.excludeFromBudget && !(t.isLent && t.isPaidBack))
             .reduce((sum, t) => sum + t.amount, 0);
 
         const monthIncome = currentMonthTx
@@ -88,7 +87,7 @@ export const FinancialHealthWidget: React.FC = () => {
         else if (savingsRate < 0.05 && effectiveIncome > 0 && totalScore < 80) advice = 'Save small amounts.';
 
         return { score: totalScore, level: lvl, color: col, tip: advice, isGood: good };
-    }, [transactions, budget, income, Colors]);
+    }, [transactions, budget, income, Colors, targetDate]);
 
     // Animation
     const progress = useSharedValue(0);

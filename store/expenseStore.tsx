@@ -6,7 +6,8 @@ import { Category, Transaction, TransactionType } from '@/types/expense';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { addMonths } from 'date-fns';
+import { addMonths, endOfMonth } from 'date-fns';
+import _ from 'lodash';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -21,7 +22,11 @@ export interface SavingsGoal {
     deadline?: string;
     isCompleted: boolean;
     priority: number; // Lower number = Higher priority
+    year: number; // The year this goal belongs to
+    startMonth: number; // 0-11 (Jan-Dec)
 }
+
+import * as Crypto from 'expo-crypto';
 
 export type { Category, Transaction, TransactionType };
 
@@ -124,122 +129,260 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [goals, setGoals] = useState<SavingsGoal[]>([]);
 
     // --- Auto-Funding Logic ---
-    const calculateFlexibleFunds = useCallback(() => {
-        let totalIncome = 0;
-        let startDateObj: Date | null = null;
+    const calculateMonthlyBreakdown = useCallback((targetYear: number, carryOver: number = 0) => {
+        // 1. Calculate Raw Net (Income - Expenses) for each month
+        // Allow negative values to represent deficits
+        const rawNet: number[] = new Array(12).fill(0);
+        const now = new Date();
 
-
-
-        // 1. Static Monthly Income
-        if (incomeStartDate && income > 0) {
-            // IncomeStartDate is format "YYYY-MM" usually
-            // We parse safely
+        // Pre-calculate tracking start date from settings
+        let trackingStartDate: Date | null = null;
+        if (incomeStartDate) {
             const parts = incomeStartDate.split('-');
             if (parts.length >= 2) {
-                const year = parseInt(parts[0]);
-                const month = parseInt(parts[1]) - 1; // 0-indexed
-                startDateObj = new Date(year, month, 1);
-
-                const now = new Date();
-                // Calculate months difference roughly
-                // Ensure we don't count future months if strict? User implies "past months" usually.
-                // Dashboard logic: monthsWithIncome = Math.max(0, endMonthIndex - startMonthIndex + 1);
-                // For "Total Available", we usually mean "Up to Now".
-                const months = (now.getFullYear() - year) * 12 + (now.getMonth() - month) + 1;
-
-                if (months > 0) {
-                    totalIncome += months * income;
-                }
-            } else {
-                // Fallback if Date parse fails but string exists?
-                startDateObj = new Date(incomeStartDate);
+                const y = parseInt(parts[0]);
+                const m = parseInt(parts[1]) - 1;
+                trackingStartDate = new Date(y, m, 1);
             }
         }
 
-        // 2. Income Transactions
-        // Filter out future income (unrealized)
-        const incomeTx = transactions.filter(t => t.type === 'income' && !t.deletedAt);
-        const relevantIncomeTx = incomeTx.filter(t => {
-            const d = new Date(t.date);
-            return d <= new Date() && (!startDateObj || d >= startDateObj);
-        });
-        const incomeTxTotal = relevantIncomeTx.reduce((sum, t) => sum + t.amount, 0);
-        totalIncome += incomeTxTotal;
+        // Pre-calculate current month end for accurate filtering
+        const currentMonthEnd = endOfMonth(now);
 
+        // Iterate through each month of the target year
+        for (let month = 0; month < 12; month++) {
+            const monthStart = new Date(targetYear, month, 1);
 
+            // Skip future months entirely
+            if (monthStart > now) continue;
 
-        // 3. Expenses
-        // Filter out expenses before the start date AND future expenses (recurring generated)
-        const expenseTx = transactions.filter(t => t.type === 'expense' && !t.deletedAt && !(t.isLent && t.isPaidBack));
-        const relevantExpenses = expenseTx.filter(t => {
-            const d = new Date(t.date);
-            return d <= new Date() && (!startDateObj || d >= startDateObj);
-        });
+            // Enforce Tracking Start Date: Skip months before the global start date
+            if (trackingStartDate && monthStart < trackingStartDate) continue;
 
-        const totalExpenses = relevantExpenses.reduce((sum, t) => sum + t.amount, 0);
+            let monthIncome = 0;
 
+            // Add static income if valid and within tracking period
+            if (trackingStartDate && monthStart >= trackingStartDate && income > 0) {
+                monthIncome += income;
+            }
 
-        const final = Math.max(0, totalIncome - totalExpenses);
+            const incomeTx = transactions.filter(t =>
+                t.type === 'income' &&
+                !t.deletedAt &&
+                new Date(t.date).getFullYear() === targetYear &&
+                new Date(t.date).getMonth() === month &&
+                new Date(t.date) <= currentMonthEnd
+            );
+            monthIncome += incomeTx.reduce((sum, t) => sum + t.amount, 0);
 
-        return final;
+            const expenseTx = transactions.filter(t =>
+                t.type === 'expense' &&
+                !t.deletedAt &&
+                !(t.isLent && t.isPaidBack) &&
+                new Date(t.date).getFullYear() === targetYear &&
+                new Date(t.date).getMonth() === month &&
+                new Date(t.date) <= currentMonthEnd
+            );
+            const monthExpenses = expenseTx.reduce((sum, t) => sum + t.amount, 0);
+
+            rawNet[month] = monthIncome - monthExpenses;
+        }
+
+        // INJECT CARRY OVER (Added to January's starting balance)
+        if (carryOver > 0) {
+            // Only add if January allows it? Or just always add to the first month?
+            // If the user's tracking started June 2025, and this is 2026, January is valid.
+            // If this is 2025 (Start year), carryOver is 0 anyway.
+            // So simply adding to rawNet[0] is correct logic for annual rollover.
+            rawNet[0] += carryOver;
+        }
+
+        // 2. Backward Resolution (Paying with Savings)
+        // If a month has a deficit, try to cover it with surplus from previous months
+        const backwardAdjusted = [...rawNet];
+        for (let i = 1; i < 12; i++) {
+            if (backwardAdjusted[i] < 0) {
+                const deficit = Math.abs(backwardAdjusted[i]);
+                let remainingDeficit = deficit;
+
+                // Look backwards
+                for (let j = i - 1; j >= 0; j--) {
+                    if (backwardAdjusted[j] > 0) {
+                        const canTake = Math.min(backwardAdjusted[j], remainingDeficit);
+                        backwardAdjusted[j] -= canTake;
+                        remainingDeficit -= canTake;
+                        if (remainingDeficit === 0) break;
+                    }
+                }
+
+                // Update current month (it might still be negative if not fully covered)
+                backwardAdjusted[i] = -remainingDeficit;
+            }
+        }
+
+        // 3. Forward Resolution (Paying off Debt)
+        // If a month is still negative (debt not covered by past savings),
+        // try to pay it off with future surpluses.
+        const finalBreakdown = [...backwardAdjusted];
+        for (let i = 0; i < 12; i++) {
+            if (finalBreakdown[i] < 0) {
+                const deficit = Math.abs(finalBreakdown[i]);
+                let remainingDeficit = deficit;
+
+                // Look forwards
+                for (let j = i + 1; j < 12; j++) {
+                    if (finalBreakdown[j] > 0) {
+                        const canTake = Math.min(finalBreakdown[j], remainingDeficit);
+                        finalBreakdown[j] -= canTake;
+                        remainingDeficit -= canTake;
+                        if (remainingDeficit === 0) break;
+                    }
+                }
+
+                // If fully covered by future, this month becomes 0.
+                // If not, it stays negative (true debt).
+                // However, for "Available Savings" for goals, we generally clamp negatives to 0
+                // because you can't save negative money, but the debt *removed* the future money already.
+                finalBreakdown[i] = 0;
+            }
+        }
+
+        return finalBreakdown;
     }, [income, incomeStartDate, transactions]);
 
     const distributeFundsToGoals = useCallback(() => {
-        const availableFunds = calculateFlexibleFunds();
-        let remaining = availableFunds;
-        let hasChanges = false;
+        const goalsByYear: Record<number, SavingsGoal[]> = {};
+        let maxGoalYear = new Date().getFullYear();
 
-
-
-
-
-        // Sort goals by Priority (Ascending) -> Higher priority first
-        // If priority is missing (legacy), treat as Infinity (last)
-        const sortedGoals = [...goals].sort((a, b) => {
-            const pA = a.priority ?? 999;
-            const pB = b.priority ?? 999;
-            return pA - pB;
+        goals.forEach(g => {
+            const y = g.year || new Date().getFullYear();
+            if (!goalsByYear[y]) goalsByYear[y] = [];
+            goalsByYear[y].push(g);
+            if (y > maxGoalYear) maxGoalYear = y;
         });
 
-        const distributedGoals = sortedGoals.map(g => {
-            const needed = g.targetAmount;
-            // If manual completion allows 'overfilling' or specific state, we might need respect it. 
-            // But for now, we strictly fill up to target.
-            const allocated = Math.min(remaining, g.targetAmount); // Cap at target
-
-            // Deduct from remaining only what we actually allocated (or could allocate)
-            const actualAllocated = Math.max(0, allocated);
-            remaining = Math.max(0, remaining - actualAllocated);
-
-            const isNowCompleted = actualAllocated >= needed;
-
-            // Check if anything changed to avoid unnecessary re-renders/saves
-            // Need to be careful with double comparison if priority changed but amount didn't?
-            // But we are constructing a new array anyway.
-            if (g.currentAmount !== actualAllocated || g.isCompleted !== isNowCompleted) {
-                hasChanges = true;
-
+        // Determine Simulation Timeline
+        let startYear = new Date().getFullYear();
+        if (incomeStartDate) {
+            const parts = incomeStartDate.split('-');
+            if (parts.length >= 2) {
+                startYear = parseInt(parts[0]);
             }
+        }
 
-            return {
-                ...g,
-                currentAmount: actualAllocated,
-                isCompleted: isNowCompleted
-            };
+        // Ensure strictly historical start (Don't start later than the first goal or current year)
+        // If user set start date 2025, and current is 2030, we must sim 2025..2030.
+        // If user set start date 2026 (future?), handle gracefully (sim 2026..?).
+        // Usually startdate <= now.
+        // Also check if any goals exist BEFORE the start date? 
+        // If a goal is in 2024 but start date is 2025 -> Goal can't be funded. Correct.
+
+        // Loop range: startYear to max(currentYear, maxGoalYear)
+        const currentYear = new Date().getFullYear();
+        const endYear = Math.max(currentYear, maxGoalYear);
+
+        let allDistributedGoals: SavingsGoal[] = [];
+        let hasChanges = false;
+        let annualCarryOver = 0; // The surplus passed from Year X to Year X+1
+
+        for (let year = startYear; year <= endYear; year++) {
+            // Get funding buckets for this year (injecting carry over from previous year)
+            // We use a copy so we can deplete it
+            const monthlyFunds = [...calculateMonthlyBreakdown(year, annualCarryOver)];
+
+            // Get goals for this year
+            const yearGoals = goalsByYear[year] || [];
+
+            // Sort by priority
+            const sortedGoals = [...yearGoals].sort((a, b) => {
+                const pA = a.priority ?? 999;
+                const pB = b.priority ?? 999;
+                return pA - pB;
+            });
+
+            // Process Goals
+            const distributed = sortedGoals.map(g => {
+                const needed = g.targetAmount;
+                const startMonth = g.startMonth || 0;
+
+                let allocatedSoFar = 0;
+
+                // Greedy allocation from eligible months
+                for (let m = startMonth; m < 12; m++) {
+                    if (allocatedSoFar >= needed) break;
+
+                    const availableInMonth = monthlyFunds[m];
+                    if (availableInMonth > 0) {
+                        const canTake = Math.min(availableInMonth, needed - allocatedSoFar);
+                        allocatedSoFar += canTake;
+                        monthlyFunds[m] -= canTake; // Deplete bucket
+                    }
+                }
+
+                const isNowCompleted = allocatedSoFar >= needed;
+
+                if (g.currentAmount !== allocatedSoFar || g.isCompleted !== isNowCompleted) {
+                    hasChanges = true;
+                }
+
+                return {
+                    ...g,
+                    currentAmount: allocatedSoFar,
+                    isCompleted: isNowCompleted,
+                    year: year,
+                    startMonth: startMonth
+                };
+            });
+
+            allDistributedGoals = [...allDistributedGoals, ...distributed];
+
+            // Calculate Remaining Surplus to carry to next year
+            // Sum of all remaining monthly buckets
+            annualCarryOver = monthlyFunds.reduce((sum, val) => sum + val, 0);
+        }
+
+        // We might have goals that were < startYear (skipped loop). They get 0 funds.
+        // We should add them to allDistributedGoals so they aren't lost or stuck with old values.
+        // Though previous logic also skipped them?
+        // Let's ensure we return ALL goals.
+        // Goals outside the [startYear, endYear] range:
+        goals.forEach(g => {
+            const y = g.year || new Date().getFullYear();
+            if (y < startYear || y > endYear) {
+                // Reset them or keep them? 
+                // If year < startYear, 0 funds.
+                // If year > endYear, implies loop didn't reach? but endYear depends on maxGoalYear.
+                if (y < startYear) {
+                    if (g.currentAmount !== 0) hasChanges = true;
+                    allDistributedGoals.push({ ...g, currentAmount: 0, isCompleted: false });
+                }
+                // y > endYear shouldn't happen due to maxGoalYear logic
+            }
         });
 
-        // Always save if the ORDER changed (due to sort) or values changed?
-        // Simple check: compare IDs of sorted vs original goals to see if order changed.
-        const orderChanged = distributedGoals.some((g, i) => g.id !== goals[i]?.id);
+        // The loop constructed allDistributedGoals.
+        // Wait, did we handle uniqueness?
+        // `goals` (original) vs `allDistributedGoals` (processed).
+        // Since we iterate `year` loop, we processed all goals defined in `goalsByYear` within range.
+        // The `goals.forEach` check above handles those strictly outside range.
+        // There shouldn't be duplicates.
+
+        // Sorting: `allDistributedGoals` order is by year then priority (roughly).
+        // Original `goals` order might be different. 
+        // Order shouldn't matter for state, but nice to keep consistent.
+
+        // Only update if changes
+        const orderChanged = allDistributedGoals.length === goals.length && allDistributedGoals.some((g, i) => g.id !== goals[i]?.id);
+
+        // Wait, `allDistributedGoals` size check.
+        // If goals had duplicates or errors, length might differ.
+        // Seems safe.
 
         if (hasChanges || orderChanged) {
-
-            setGoals(distributedGoals);
-            saveData('goals', distributedGoals);
-        } else {
-
+            setGoals(allDistributedGoals);
+            saveData('goals', allDistributedGoals);
         }
-    }, [calculateFlexibleFunds, goals]);
+    }, [calculateMonthlyBreakdown, goals, incomeStartDate]);
 
     // Trigger distribution when financial state changes
     useEffect(() => {
@@ -645,7 +788,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 // 1. Create new transaction instance
                 const newTx: Transaction = {
                     ...t,
-                    id: Date.now().toString() + Math.random().toString().slice(2, 5), // Ensure unique ID
+                    id: Crypto.randomUUID(), // Ensure unique ID
                     date: nextDate.toISOString(),
                     isRecurring: false, // Instance is not recurring itself
                     recurrenceInterval: undefined,
@@ -794,14 +937,17 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 if (remoteCategories && !catError) {
                     const parsed = remoteCategories.map(fromSupabaseCategory);
                     if (parsed.length > 0) {
-                        setCategories(parsed);
-                        saveData('categories', parsed);
+                        // Deduplicate by name (keep first occurrence)
+                        const uniqueCats = _.uniqBy(parsed, (c) => c.name.toLowerCase());
+
+                        setCategories(uniqueCats);
+                        saveData('categories', uniqueCats);
                     } else {
                         // Push defaults if remote is empty
                         // Generate new unique IDs for this user's default categories to avoid Primary Key collisions
                         const defaultsWithIds = defaultCategories.map(c => ({
                             ...c,
-                            id: Date.now().toString() + Math.random().toString().slice(2, 5), // Unique ID per user
+                            id: Crypto.randomUUID(), // Unique ID per user
                         }));
                         const { error } = await supabase.from('categories').upsert(defaultsWithIds.map(c => ({ ...toSupabaseCategory(c), user_id: user.id })));
 
@@ -870,7 +1016,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 
     const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
-        const newTransaction: Transaction = { ...transaction, id: Date.now().toString(), deletedAt: null };
+        const newTransaction: Transaction = { ...transaction, id: Crypto.randomUUID(), deletedAt: null };
         const updated = [newTransaction, ...transactions];
 
         setTransactions(updated);
@@ -1107,7 +1253,14 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, [user, checkBudgetAndNotify, budget, income]);
 
     const addCategory = useCallback(async (name: string, icon: string, color: string) => {
-        const newCat: Category = { id: Date.now().toString(), name, icon, color, isPredefined: false };
+        // Prevent duplicates
+        const exists = categories.some(c => c.name.toLowerCase() === name.trim().toLowerCase());
+        if (exists) {
+            Alert.alert('Error', 'Category already exists');
+            return;
+        }
+
+        const newCat: Category = { id: Crypto.randomUUID(), name, icon, color, isPredefined: false };
         setCategories(prev => {
             const updated = [...prev, newCat];
             saveData('categories', updated);
@@ -1127,13 +1280,15 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, [user, isOffline, addToQueue]);
 
     const addGoal = useCallback((goalData: Omit<SavingsGoal, 'id' | 'currentAmount' | 'isCompleted'>) => {
-        const { priority, ...rest } = goalData;
+        const { priority, year, startMonth, ...rest } = goalData;
         const newGoal: SavingsGoal = {
-            id: Date.now().toString(),
+            id: Crypto.randomUUID(),
             currentAmount: 0,
             isCompleted: false,
             // If priority is not passed (e.g. from existing calls not updated yet?), default to end of list
             priority: (priority !== undefined) ? priority : (goals.length + 1),
+            year: year || new Date().getFullYear(),
+            startMonth: startMonth !== undefined ? startMonth : 0,
             ...rest
         };
         const updatedGoals = [...goals, newGoal];

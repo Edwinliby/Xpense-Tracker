@@ -7,25 +7,34 @@ import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-export const MonthComparisonWidget: React.FC = () => {
+export const MonthComparisonWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, currencySymbol } = useExpense();
 
     const comparison = useMemo(() => {
-        const now = new Date();
-        const thisMonthStart = startOfMonth(now);
-        const thisMonthEnd = endOfMonth(now);
-        const lastMonth = subMonths(now, 1);
+        const thisMonthStart = startOfMonth(targetDate);
+        const thisMonthEnd = endOfMonth(targetDate);
+        const lastMonth = subMonths(targetDate, 1);
         const lastMonthStart = startOfMonth(lastMonth);
         const lastMonthEnd = endOfMonth(lastMonth);
 
         const thisMonthSpent = transactions
-            .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start: thisMonthStart, end: thisMonthEnd }))
+            .filter(t =>
+                t.type === 'expense' &&
+                isWithinInterval(new Date(t.date), { start: thisMonthStart, end: thisMonthEnd }) &&
+                !t.excludeFromBudget &&
+                !(t.isLent && t.isPaidBack)
+            )
             .reduce((sum, t) => sum + t.amount, 0);
 
         const lastMonthSpent = transactions
-            .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start: lastMonthStart, end: lastMonthEnd }))
+            .filter(t =>
+                t.type === 'expense' &&
+                isWithinInterval(new Date(t.date), { start: lastMonthStart, end: lastMonthEnd }) &&
+                !t.excludeFromBudget &&
+                !(t.isLent && t.isPaidBack)
+            )
             .reduce((sum, t) => sum + t.amount, 0);
 
         const difference = thisMonthSpent - lastMonthSpent;
@@ -34,14 +43,14 @@ export const MonthComparisonWidget: React.FC = () => {
         return {
             thisMonth: thisMonthSpent,
             lastMonth: lastMonthSpent,
-            thisMonthName: format(now, 'MMMM'),
+            thisMonthName: format(targetDate, 'MMMM'),
             lastMonthName: format(lastMonth, 'MMMM'),
             difference,
             percentChange,
             isIncrease: difference > 0,
             isEqual: Math.abs(difference) < 1,
         };
-    }, [transactions]);
+    }, [transactions, targetDate]);
 
     return (
         <View style={[

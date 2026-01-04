@@ -4,6 +4,7 @@ export const Colors = {
   light: {
     text: "#0F172A", // Slate 900
     textSecondary: "#64748B", // Slate 500
+    textQuaternary: "#CBD5E1", // Slate 300
     background: "#F8FAFC", // Soft Gray
     surface: "#FFFFFF",
     surfaceHighlight: "#F1F5F9", // Slate 100
@@ -32,6 +33,7 @@ export const Colors = {
   dark: {
     text: "#F8FAFC", // Slate 50
     textSecondary: "#94A3B8", // Slate 400
+    textQuaternary: "#475569", // Slate 600
     background: "#000000", // Pure Black
     surface: "#111111", // Very Dark Gray
     surfaceHighlight: "#222222", // Dark Gray

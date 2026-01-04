@@ -65,9 +65,10 @@ export const HomeChart: React.FC<HomeChartProps> = ({
         thickness2={data2 ? 2 : 0}
 
         // Points
-        hideDataPoints
+        hideDataPoints={viewMode === 'monthly'} // Show points only in Yearly mode to encourage clicking
         // Disable default focus to prevent z-index issues with the native dot
         focusEnabled={false}
+        onPress={(item: { onPress: (arg0: any) => any; }) => item.onPress && item.onPress(item)}
 
         // Text
         textColor={Colors.text}

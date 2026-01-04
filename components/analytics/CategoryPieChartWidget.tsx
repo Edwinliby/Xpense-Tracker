@@ -6,18 +6,17 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 
-export const CategoryPieChartWidget: React.FC = () => {
+export const CategoryPieChartWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, categories, currencySymbol } = useExpense();
 
     const { pieData, totalSpending, topCategories } = useMemo(() => {
-        const now = new Date();
-        const start = startOfMonth(now);
-        const end = endOfMonth(now);
+        const start = startOfMonth(targetDate);
+        const end = endOfMonth(targetDate);
 
         const currentMonthExpenses = transactions.filter(
-            t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end })
+            t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end }) && !t.excludeFromBudget && !(t.isLent && t.isPaidBack)
         );
 
         const total = currentMonthExpenses.reduce((sum, t) => sum + t.amount, 0);
@@ -55,7 +54,7 @@ export const CategoryPieChartWidget: React.FC = () => {
             totalSpending: total,
             topCategories: data
         };
-    }, [transactions, categories, Colors]);
+    }, [transactions, categories, Colors, targetDate]);
 
     if (totalSpending === 0) {
         return (

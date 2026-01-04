@@ -7,32 +7,43 @@ import { AlertCircle, CheckCircle2, TrendingDown, TrendingUp, Wallet } from 'luc
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-export const QuickInsightsWidget: React.FC = () => {
+export const QuickInsightsWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, budget, currencySymbol } = useExpense();
 
     const insights = useMemo(() => {
-        const now = new Date();
-        const thisMonthStart = startOfMonth(now);
-        const thisMonthEnd = endOfMonth(now);
-        const lastMonth = subMonths(now, 1);
+        const thisMonthStart = startOfMonth(targetDate);
+        const thisMonthEnd = endOfMonth(targetDate);
+        const lastMonth = subMonths(targetDate, 1);
         const lastMonthStart = startOfMonth(lastMonth);
         const lastMonthEnd = endOfMonth(lastMonth);
 
         const thisMonthSpent = transactions
-            .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start: thisMonthStart, end: thisMonthEnd }))
+            .filter(t =>
+                t.type === 'expense' &&
+                isWithinInterval(new Date(t.date), { start: thisMonthStart, end: thisMonthEnd }) &&
+                !t.excludeFromBudget &&
+                !(t.isLent && t.isPaidBack)
+            )
             .reduce((sum, t) => sum + t.amount, 0);
 
         const lastMonthSpent = transactions
-            .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start: lastMonthStart, end: lastMonthEnd }))
+            .filter(t =>
+                t.type === 'expense' &&
+                isWithinInterval(new Date(t.date), { start: lastMonthStart, end: lastMonthEnd }) &&
+                !t.excludeFromBudget &&
+                !(t.isLent && t.isPaidBack)
+            )
             .reduce((sum, t) => sum + t.amount, 0);
 
         const change = lastMonthSpent > 0 ? ((thisMonthSpent - lastMonthSpent) / lastMonthSpent) * 100 : 0;
         const isIncrease = change > 0;
 
         const avgTransaction = transactions.length > 0
-            ? transactions.reduce((sum, t) => sum + t.amount, 0) / transactions.length
+            ? transactions
+                .filter(t => !t.excludeFromBudget && !(t.isLent && t.isPaidBack))
+                .reduce((sum, t) => sum + t.amount, 0) / transactions.length
             : 0;
 
         const budgetUsed = budget > 0 ? (thisMonthSpent / budget) * 100 : 0;
@@ -70,7 +81,7 @@ export const QuickInsightsWidget: React.FC = () => {
                 bgGradient: [Colors.primary + '20', Colors.primary + '05']
             },
         ];
-    }, [transactions, budget, currencySymbol, Colors]);
+    }, [transactions, budget, currencySymbol, Colors, targetDate]);
 
     return (
         <View style={styles.container}>
@@ -100,7 +111,7 @@ export const QuickInsightsWidget: React.FC = () => {
                             end={{ x: 1, y: 1 }}
                         >
                             <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-                                {React.createElement(item.icon, { size: 24, color: item.color })}
+                                {React.createElement(item.icon, { size: 18, color: item.color })}
                             </View>
                             <View>
                                 <Text style={[styles.cardTitle, { color: Colors.textSecondary }]}>{item.title}</Text>
@@ -117,46 +128,46 @@ export const QuickInsightsWidget: React.FC = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 32,
+        marginBottom: 24, // Reduced from 32
     },
     scrollContent: {
         paddingHorizontal: 22,
-        gap: 16,
-        paddingBottom: 8, // Space for shadow
+        gap: 12, // Reduced from 16
+        paddingBottom: 8,
     },
     cardContainer: {
-        width: 170,
-        height: 190,
-        borderRadius: 24,
+        width: 140, // Reduced from 170
+        height: 150, // Reduced from 190
+        borderRadius: 20, // Reduced from 24
         overflow: 'hidden',
     },
     cardGradient: {
         flex: 1,
-        padding: 20,
+        padding: 14, // Reduced from 20
         justifyContent: 'space-between',
     },
     iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 20,
+        width: 36, // Reduced from 48
+        height: 36,
+        borderRadius: 12, // Reduced from 20
         justifyContent: 'center',
         alignItems: 'center',
     },
     cardTitle: {
-        fontSize: 12,
+        fontSize: 10, // Reduced from 12
         fontFamily: 'Geist-SemiBold',
-        marginBottom: 6,
+        marginBottom: 4, // Reduced from 6
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     cardValue: {
-        fontSize: 24,
+        fontSize: 20, // Reduced from 24
         fontFamily: 'Geist-Bold',
-        marginBottom: 6,
+        marginBottom: 4, // Reduced from 6
         letterSpacing: -0.5,
     },
     cardSubtitle: {
-        fontSize: 12,
+        fontSize: 10, // Reduced from 12
         fontFamily: 'Geist-Medium',
         opacity: 0.8,
     },

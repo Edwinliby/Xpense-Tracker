@@ -1,10 +1,12 @@
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { UserLevelWidget } from '@/components/UserLevelWidget';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { AchievementCategory } from '@/types/achievements';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AchievementsScreen() {
@@ -29,7 +31,6 @@ export default function AchievementsScreen() {
         });
     }, [achievements, filter]);
 
-    const unlockedCount = achievements.filter(a => a.unlockedAt).length;
 
     const filters: { label: string; value: AchievementCategory | 'all' }[] = [
         { label: 'All', value: 'all' },
@@ -43,10 +44,10 @@ export default function AchievementsScreen() {
         <SafeAreaView style={Styles.container}>
             <View style={Styles.header}>
                 <Text style={[Styles.title, { marginBottom: 4, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Achievements</Text>
-                <Text style={[styles.subtitle, { color: Colors.textSecondary }]}>
-                    {unlockedCount} of {achievements.length} unlocked
-                </Text>
             </View>
+
+            {/* Level Widget */}
+            <UserLevelWidget achievements={achievements} />
 
             {/* Filter Tabs */}
             <View style={{ paddingBottom: 16 }}>
@@ -88,8 +89,13 @@ export default function AchievementsScreen() {
 
             {/* Achievements List */}
             <ScrollView showsVerticalScrollIndicator={false} style={styles.list} contentContainerStyle={{ paddingBottom: 40 }}>
-                {filteredAchievements.map(achievement => (
-                    <AchievementBadge key={achievement.id} achievement={achievement} />
+                {filteredAchievements.map((achievement, index) => (
+                    <Animated.View
+                        key={achievement.id}
+                        entering={FadeInDown.delay(index * 50 + 200).springify()} // Staggered entry
+                    >
+                        <AchievementBadge achievement={achievement} />
+                    </Animated.View>
                 ))}
 
                 {filteredAchievements.length === 0 && (

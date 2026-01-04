@@ -6,7 +6,7 @@ import React, { useMemo } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { LineChart, lineDataItem } from 'react-native-gifted-charts';
 
-export const SpendingTrendsWidget: React.FC = () => {
+export const SpendingTrendsWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, currencySymbol } = useExpense();
@@ -15,12 +15,17 @@ export const SpendingTrendsWidget: React.FC = () => {
     const trendsData = useMemo(() => {
         const months: lineDataItem[] = [];
         for (let i = 5; i >= 0; i--) {
-            const date = subMonths(new Date(), i);
+            const date = subMonths(targetDate, i);
             const monthStart = startOfMonth(date);
             const monthEnd = endOfMonth(date);
 
             const spent = transactions
-                .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd }))
+                .filter(t =>
+                    t.type === 'expense' &&
+                    isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd }) &&
+                    !t.excludeFromBudget &&
+                    !(t.isLent && t.isPaidBack)
+                )
                 .reduce((sum, t) => sum + t.amount, 0);
 
             months.push({
@@ -31,7 +36,7 @@ export const SpendingTrendsWidget: React.FC = () => {
             });
         }
         return months;
-    }, [transactions, Colors]);
+    }, [transactions, Colors, targetDate]);
 
 
     const avgSpending = trendsData.reduce((sum, d) => sum + (d.value || 0), 0) / trendsData.length;

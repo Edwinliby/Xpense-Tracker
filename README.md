@@ -10,7 +10,7 @@
     <a href="#contributors">Contributors</a>
   </p>
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20Web-lightgrey.svg)
 
 </div>

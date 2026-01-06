@@ -1,50 +1,100 @@
-# Welcome to your Expo app 👋
+<div align="center">
+  <img src="./assets/images/icon.png" alt="Xpense Logo" width="120" height="120" />
+  <h1>Xpense</h1>
+  <p><strong>Master your money with elegance.</strong></p>
+  
+  <p>
+    <a href="#features">Features</a> •
+    <a href="#tech-stack">Tech Stack</a> •
+    <a href="#getting-started">Getting Started</a> •
+    <a href="#contributors">Contributors</a>
+  </p>
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20Web-lightgrey.svg)
 
-## Get started
+</div>
 
-1. Install dependencies
+<br />
+
+**Xpense** is a modern, premium expense tracker designed to help you track your spending, manage budgets, and achieve financial goals with style. Built with performant React Native technology, it offers a seamless experience across mobile and web.
+
+## Features
+
+- **📊 Smart Analytics**: Visualize your spending habits with beautiful, interactive charts.
+- **💰 Budget Management**: Set monthly budgets and get real-time alerts when you're close to limits.
+- **🎯 Goals & Savings**: Create custom savings goals and track your progress automatically.
+- **🏆 Gamification**: Earn achievements for good financial habits to stay motivated.
+- **🌍 Multi-language Support**: Fully localized in English, Spanish, and Somali.
+- **⚡ Offline-First**: Works perfectly without internet; syncs automatically when online.
+- **📱 Cross-Platform**: Optimized for iOS, Android, and Web.
+- **🔒 Secure Sync**: Powered by Supabase for reliable and secure data synchronization.
+
+## Tech Stack
+
+- **Framework**: [React Native](https://reactnative.dev/) with [Expo SDK 52](https://expo.dev/)
+- **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/)
+- **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
+- **State Management**: React Context & Hooks
+- **Styling**: StyleSheet with Custom Theme System ([Geist Font](https://vercel.com/font))
+- **Charts**: [react-native-gifted-charts](https://github.com/Abhinandan-Kushwaha/react-native-gifted-charts)
+- **Animations**: [Reanimated](https://docs.swmansion.com/react-native-reanimated/) & Layout Animations
+
+## Getting Started
+
+To run this project locally, follow these steps:
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm or yarn
+- Expo Go app on your phone (for mobile testing)
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/Edwinliby/Xpense-Tracker.git
+   cd Expense_Tracker
+   ```
+
+2. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. **Set up Environment Variables**
+   Create a `.env.local` file in the root directory and add your Supabase credentials:
 
+   ```env
+   EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Start the App**
    ```bash
    npx expo start
    ```
+   - Press `a` for Android
+   - Press `i` for iOS (Mac only)
+   - Press `w` for Web
 
-In the output, you'll find options to open the app in a
+## Contributors
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Thanks to the amazing people who have contributed to this project!
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+<a href="https://github.com/Edwinliby/Xpense-Tracker/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Edwinliby/Xpense-Tracker" />
+</a>
 
-## Get a fresh project
+## 📄 License
 
-When you're ready, run:
+This project is licensed under the [MIT License](LICENSE).
 
-```bash
-npm run reset-project
-```
+---
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+<div align="center">
+  <sub>Built with ❤️ by <a href="https://github.com/Edwinliby">Edwin</a></sub>
+</div>

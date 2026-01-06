@@ -3,7 +3,7 @@ import { SavingsGoal, useExpense } from '@/store/expenseStore';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 interface AddGoalModalProps {
     visible: boolean;
@@ -110,10 +110,32 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
         setSelectedIcon(ICONS[0]);
     };
 
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 768; // Standard tablet/desktop breakpoint
+
     return (
         <Modal visible={visible} animationType="slide" transparent>
-            <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, { backgroundColor: Colors.surface }]}>
+            <View style={[
+                styles.modalOverlay,
+                isDesktop && { alignItems: 'center', justifyContent: 'center' }
+            ]}>
+                <View style={[
+                    styles.modalContent,
+                    { backgroundColor: Colors.surface },
+                    isDesktop && {
+                        width: '100%',
+                        maxWidth: 500,
+                        height: 'auto',
+                        maxHeight: '90%',
+                        borderRadius: 32, // Match top radius for full roundness
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 20,
+                        elevation: 10,
+                    }
+                ]}>
+
                     <View style={[styles.handle, { backgroundColor: Colors.textQuaternary }]} />
 
                     <View style={styles.header}>
@@ -238,6 +260,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'flex-end',
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     modalContent: {
         borderTopLeftRadius: 32,
@@ -251,14 +276,14 @@ const styles = StyleSheet.create({
         height: 5,
         borderRadius: 3,
         alignSelf: 'center',
-        marginBottom: 24,
+        marginBottom: 20,
         opacity: 0.3,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 32,
+        marginBottom: 16,
     },
     title: {
         fontSize: 28,
@@ -276,7 +301,7 @@ const styles = StyleSheet.create({
         paddingBottom: 50,
     },
     inputGroup: {
-        marginBottom: 24,
+        marginBottom: 20,
     },
     label: {
         fontSize: 12,
@@ -319,8 +344,8 @@ const styles = StyleSheet.create({
         elevation: 5
     },
     iconScroll: {
+        paddingHorizontal: 4,
         paddingVertical: 4,
-        paddingRight: 20
     },
     iconOption: {
         width: 60,

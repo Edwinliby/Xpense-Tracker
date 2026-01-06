@@ -1,6 +1,6 @@
 import { useThemeColor } from '@/hooks/useThemeColor';
 import React, { useMemo } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LineChart, lineDataItem } from 'react-native-gifted-charts';
 
 interface HomeChartProps {
@@ -9,9 +9,8 @@ interface HomeChartProps {
   viewMode: 'monthly' | 'yearly';
   maxValue: number;
   currencySymbol: string;
+  width?: number; // Optional custom width
 }
-
-const screenWidth = Dimensions.get('window').width;
 
 export const HomeChart: React.FC<HomeChartProps> = ({
   data,
@@ -19,18 +18,20 @@ export const HomeChart: React.FC<HomeChartProps> = ({
   viewMode,
   maxValue,
   currencySymbol,
+  width: customWidth,
 }) => {
-
   const Colors = useThemeColor();
+  const { width: screenWidth } = useWindowDimensions();
 
   const chartConfig = useMemo(() => {
+    const availableWidth = customWidth || (screenWidth - 40);
     return {
-      width: screenWidth - 40, // consistent padding
+      width: availableWidth,
       height: 180,
-      spacing: (screenWidth - 60) / (Math.max(data.length, 1)),
+      spacing: (availableWidth - 20) / (Math.max(data.length, 1)), // Adjusted spacing calculation
       initialSpacing: 20,
     };
-  }, [data.length]);
+  }, [data.length, customWidth, screenWidth]);
 
   return (
     <View style={styles.container}>

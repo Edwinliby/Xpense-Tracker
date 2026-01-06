@@ -13,7 +13,7 @@ import { useExpense } from '@/store/expenseStore';
 import { format, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AnalyticsScreen() {
@@ -23,6 +23,15 @@ export default function AnalyticsScreen() {
     const { transactions, isOffline } = useExpense();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 768;
+
+    // Responsive calculations
+    const containerWidth = Math.min(width, 1200);
+    const availableGridWidth = isDesktop ? (containerWidth - 40) : width;
+    const gap = 24;
+    // Left Column Flex: 2, Right: 1. Total flex: 3.
+    const leftColumnWidth = isDesktop ? ((availableGridWidth - gap) * (2 / 3)) : width;
 
     // Calculate available months from transactions
     const availableMonths = React.useMemo(() => {
@@ -117,35 +126,79 @@ export default function AnalyticsScreen() {
                 }
                 contentContainerStyle={{ paddingBottom: 40 }}
             >
-                {/* Lifetime Stats */}
-                <LifetimeStatsWidget />
+                <View style={isDesktop ? styles.desktopGrid : styles.mobileStack}>
+                    {/* LEFT COLUMN (Desktop: Charts) */}
+                    <View style={isDesktop ? styles.leftColumn : styles.column}>
+                        {/* Spending Trends */}
+                        <SpendingTrendsWidget targetDate={selectedDate} width={isDesktop ? leftColumnWidth - 48 : undefined} />
 
-                {/* Financial Health Score */}
-                <FinancialHealthWidget targetDate={selectedDate} />
+                        {/* Day of Week */}
+                        <DayOfWeekWidget targetDate={selectedDate} width={isDesktop ? leftColumnWidth - 48 : undefined} />
 
-                {/* Quick Insights */}
-                <QuickInsightsWidget targetDate={selectedDate} />
+                        {/* Category Pie Chart */}
+                        <CategoryPieChartWidget targetDate={selectedDate} />
+                    </View>
 
-                {/* Financial KPIs */}
-                <FinancialKPIsWidget targetDate={selectedDate} />
+                    {/* RIGHT COLUMN (Desktop: KPIs & Lists) */}
+                    <View style={isDesktop ? styles.rightColumn : styles.column}>
+                        {/* Lifetime Stats */}
+                        <LifetimeStatsWidget />
 
-                {/* Month Comparison */}
-                <MonthComparisonWidget targetDate={selectedDate} />
+                        {/* Financial Health Score */}
+                        <FinancialHealthWidget targetDate={selectedDate} />
 
-                {/* Spending Trends */}
-                <SpendingTrendsWidget targetDate={selectedDate} />
+                        {/* Quick Insights */}
+                        <QuickInsightsWidget targetDate={selectedDate} />
 
-                {/* Day of Week */}
-                <DayOfWeekWidget targetDate={selectedDate} />
+                        {/* Financial KPIs */}
+                        <FinancialKPIsWidget targetDate={selectedDate} />
 
-                {/* Category Pie Chart */}
-                <CategoryPieChartWidget targetDate={selectedDate} />
+                        {/* Month Comparison */}
+                        <MonthComparisonWidget targetDate={selectedDate} />
 
-                {/* Top Categories */}
-                <TopCategoriesWidget targetDate={selectedDate} />
+                        {/* Top Categories */}
+                        <TopCategoriesWidget targetDate={selectedDate} />
+                    </View>
+                </View>
 
-                <View style={{ height: 100 }} />
+                {/* Mobile: Original Order or specific order? 
+                    On Mobile, the grid approach here splits them. 
+                    If we want to preserve the EXACT original order on mobile, we'd need to conditionally render the whole tree.
+                    Or, accepts that the order might slightly change (Charts first, then Stats).
+                    The proposed grid puts Charts available in Left Column (top on mobile) and Stats in Right (bottom on mobile).
+                    Actually, let's check styles.mobileStack = column.
+                    So Left Column renders first, then Right Column.
+                    This means Charts are now at the top, Stats at the bottom.
+                    Original was mixed.
+                    Let's accept this re-ordering as it's cleaner, or duplicate for mobile if strictly required.
+                    Re-ordering is usually fine for "Improve UI".
+                */}
+
+                {!isDesktop && <View style={{ height: 100 }} />}
             </ScrollView>
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    desktopGrid: {
+        flexDirection: 'row',
+        gap: 2,
+        paddingHorizontal: 20,
+        alignItems: 'flex-start',
+    },
+    mobileStack: {
+        flexDirection: 'column-reverse',
+    },
+    leftColumn: {
+        flex: 2,
+        gap: 0,
+    },
+    rightColumn: {
+        flex: 1.5,
+        gap: 0,
+    },
+    column: {
+        width: '100%',
+    },
+});

@@ -1,4 +1,5 @@
 import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { WebContainer } from '@/components/WebContainer';
 import { Colors } from '@/constants/Colors';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
@@ -104,23 +105,25 @@ function AppContent() {
 
   return (
     <NavigationThemeProvider value={colorScheme === 'dark' ? CustomDarkTheme : CustomLightTheme}>
-      <OfflineIndicator />
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="add"
-          options={{
-            presentation: 'transparentModal',
-            animation: 'fade',
-            headerShown: false
-          }}
-        />
-        <Stack.Screen name="search" options={{ headerShown: false, animation: 'ios_from_right' }} />
+      <WebContainer>
+        <OfflineIndicator />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="auth" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="add"
+            options={{
+              presentation: 'transparentModal',
+              animation: 'fade',
+              headerShown: false
+            }}
+          />
+          <Stack.Screen name="search" options={{ headerShown: false, animation: 'ios_from_right' }} />
 
-        <Stack.Screen name="trash" options={{ headerShown: false, animation: 'ios_from_right' }} />
-      </Stack>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <Stack.Screen name="trash" options={{ headerShown: false, animation: 'ios_from_right' }} />
+        </Stack>
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      </WebContainer>
     </NavigationThemeProvider>
   );
 }

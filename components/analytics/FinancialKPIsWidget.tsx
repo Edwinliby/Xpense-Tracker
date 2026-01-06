@@ -111,14 +111,14 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 15, // Reduced from 17
         fontFamily: 'Geist-Bold',
-        marginBottom: 12, // Reduced from 20
-        marginHorizontal: 24,
+        marginBottom: 18, // Reduced from 20
+        marginHorizontal: 20,
         letterSpacing: 0.2,
     },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
         gap: 12, // Reduced gap from 16
     },
     card: {

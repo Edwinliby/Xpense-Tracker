@@ -3,10 +3,10 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, getDay, isWithinInterval, startOfMonth } from 'date-fns';
 import React, { useMemo } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 
-export const DayOfWeekWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
+export const DayOfWeekWidget: React.FC<{ targetDate: Date, width?: number }> = ({ targetDate, width }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, currencySymbol } = useExpense();
@@ -53,8 +53,8 @@ export const DayOfWeekWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) 
         return { barData: data, maxVal: maxValue };
     }, [transactions, Colors, currencySymbol, targetDate]);
 
-    const screenWidth = Dimensions.get('window').width;
-    const chartWidth = screenWidth - 80;
+    const { width: screenWidth } = useWindowDimensions();
+    const chartWidth = width ? (width - 48) : (screenWidth - 80); // 48 = padding 24*2, 80 was existing approximation
 
     return (
         <View style={[

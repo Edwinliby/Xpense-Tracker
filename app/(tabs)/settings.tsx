@@ -2,6 +2,7 @@ import { Button } from '@/components/Button';
 import { ColorPicker } from '@/components/ColorPicker';
 import { IconPicker } from '@/components/IconPicker';
 import { Input } from '@/components/Input';
+import { WebDatePicker } from '@/components/WebDatePicker';
 import { useStyles } from '@/constants/Styles';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -15,7 +16,7 @@ import { debounce } from 'lodash';
 import * as Icons from 'lucide-react-native';
 import { Calendar, Download, Monitor, Moon, Sun, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -327,16 +328,33 @@ export default function SettingsScreen() {
                         <View style={[styles.pickerContainer, { backgroundColor: Colors.background, borderColor: Colors.border }]}>
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.itemTitle, { color: Colors.text, fontSize: 13, marginBottom: 4 }]}>Tracking Start Date</Text>
-                                <Text style={{ color: incomeStartDate ? Colors.text : Colors.textSecondary, fontSize: 15, fontWeight: '500' }}>
-                                    {incomeStartDate || "Not set (Select Date)"}
-                                </Text>
+                                {Platform.OS === 'web' ? (
+                                    <WebDatePicker
+                                        value={(() => {
+                                            if (!incomeStartDate) return new Date();
+                                            const d = new Date(incomeStartDate + '-01');
+                                            return isNaN(d.getTime()) ? new Date() : d;
+                                        })()}
+                                        onChange={(date: Date) => {
+                                            const year = date.getFullYear();
+                                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                                            setIncomeStartDate(`${year}-${month}`);
+                                        }}
+                                    />
+                                ) : (
+                                    <Text style={{ color: incomeStartDate ? Colors.text : Colors.textSecondary, fontSize: 15, fontWeight: '500' }}>
+                                        {incomeStartDate || "Not set (Select Date)"}
+                                    </Text>
+                                )}
                             </View>
-                            <TouchableOpacity
-                                onPress={() => setShowDatePicker(true)}
-                                style={{ padding: 8, backgroundColor: Colors.surfaceHighlight, borderRadius: 8 }}
-                            >
-                                <Calendar size={20} color={Colors.text} />
-                            </TouchableOpacity>
+                            {Platform.OS !== 'web' && (
+                                <TouchableOpacity
+                                    onPress={() => setShowDatePicker(true)}
+                                    style={{ padding: 8, backgroundColor: Colors.surfaceHighlight, borderRadius: 8 }}
+                                >
+                                    <Calendar size={20} color={Colors.text} />
+                                </TouchableOpacity>
+                            )}
                             {incomeStartDate && (
                                 <TouchableOpacity onPress={() => setIncomeStartDate(null)} style={{ marginLeft: 8, padding: 4 }}>
                                     <X size={16} color={Colors.textSecondary} />
@@ -344,7 +362,7 @@ export default function SettingsScreen() {
                             )}
                         </View>
 
-                        {showDatePicker && (
+                        {Platform.OS !== 'web' && showDatePicker && (
                             <DateTimePicker
                                 value={incomeStartDate ? new Date(incomeStartDate + '-01') : new Date()}
                                 mode="date"

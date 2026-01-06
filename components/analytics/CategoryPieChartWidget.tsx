@@ -133,7 +133,6 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 24,
         marginHorizontal: 20,
-        marginBottom: 32,
     },
     title: {
         fontSize: 17,

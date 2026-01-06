@@ -10,17 +10,18 @@ import { differenceInMonths, endOfMonth, format, getDaysInMonth, isWithinInterva
 import { router } from 'expo-router';
 import { ChevronLeft, ChevronRight, Search, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
   const Styles = useStyles();
   const Colors = useThemeColor();
   const { transactions, budget, income, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement } = useExpense();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
 
   const now = useMemo(() => new Date(), []);
 
-  // Determine the start date for the monthly view history
   // Determine the start date for the monthly view history
   const historyStartDate = useMemo(() => {
     let dates = transactions.map(t => new Date(t.date).getTime());
@@ -53,44 +54,14 @@ export default function DashboardScreen() {
   // Update selectedBarIndex when numberOfMonths changes (e.g. new transactions or first load)
   // Instead of blindly resetting to "now", try to preserve the currently selected month/year.
   useEffect(() => {
-    // If we have a currently selected bar, let's capture its date info
     if (selectedBar) {
       const currentLabel = selectedBar.label;
       const currentYear = selectedBar.year;
 
-      // Find the new index in the updated monthlyData that matches this label/year
-      // We rely on monthlyData being dependent on 'numberOfMonths' so it should be fresh if we use it here?
-      // Actually monthlyData is a dependency of the effect below that updates selectedBar.
-      // But here we are setting the INDEX. We need to calculate what the index WOULD be.
-
-      // Recalculate the array of dates logic to find the index:
-      // monthlyData indices: 0 = oldest, numberOfMonths = newest (current)
-      // `subtract` value was: numberOfMonths - selectedBarIndex
-      // We want to find the new index such that: newNumberOfMonths - newIndex = oldSubtract? 
-      // No, that assumes relative position from NOW is constant. 
-      // If we added OLD data (history grew), 'numberOfMonths' increases.
-      // If we are looking at "Jan 2025" (current), subtract=0. index=newMax.
-      // If we are looking at "Jan 2023", and we added data for "Jan 2022", numberOfMonths increases.
-      // We want to keep looking at "Jan 2023".
-
-      // Let's use the date logic directly. 
-      // The date of the currently selected bar is:
-      // selectedDate = subMonths(now, (oldNumberOfMonths - oldSelectedBarIndex)) <- We don't have old values easily.
-
-      // Simpler: We know the selectedBar.year and selectedBar.label (MMM).
-      // We can search the NEW monthlyData for this combo in the next render cycle, OR calculate index now.
-
-      // Let's calculate the date of the PREVIOUSLY selected item using state that hasn't theoretically updated yet? 
-      // No, this effect runs AFTER render. 
-
-      // Best approach: Calculate the date we WANT to be at.
-      // We stored selectedBar in state. 
       const targetDate = new Date(currentYear, ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(currentLabel), 1); // rough parse
 
-      // But we can just use differenceInMonths from 'now' to find the 'subtract' value.
       const monthsDiff = differenceInMonths(now, targetDate);
       if (monthsDiff >= 0 && monthsDiff <= numberOfMonths) {
-        // The new index should be:
         const newIndex = numberOfMonths - monthsDiff;
         if (newIndex !== selectedBarIndex) {
           setSelectedBarIndex(newIndex);
@@ -99,30 +70,13 @@ export default function DashboardScreen() {
       }
     }
 
-    // If we couldn't match (maybe it's out of range now? or first load), default to latest.
-    // Only reset if we are "far" off or it's clearly a data expanded event where we want to snap?
-    // Actually, distinct check: if we are already at the max index (current month), we probably want to STAY at the max index.
-    // If numberOfMonths simply grew because we added old history, 'numberOfMonths' went from 5 to 20.
-    // If we were at index 5 (current), we want to be at index 20 (current).
-    // The logic above (monthsDiff=0) handles this -> newIndex = 20 - 0 = 20. Correct.
 
-    // If we were at index 0 (oldest, say 5 months ago), and we add 10 more months of history.
-    // numberOfMonths goes 5 -> 15.
-    // monthsDiff was 5. newIndex = 15 - 5 = 10.
-    // So we stay visually at the same month (5 months ago), instead of the NEW oldest (15 months ago). 
-    // This is the desired behavior! "Don't lose my place".
-
-    // So the logic holds.
-    // HOWEVER, `selectedBar` comes from `monthlyData[selectedBarIndex]`. 
-    // On the very first render, selectedBar is null. We set index to numberOfMonths.
     if (!selectedBar) {
       setSelectedBarIndex(numberOfMonths);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numberOfMonths]); // Depend ONLY on numberOfMonths changing
-
-
+  }, [numberOfMonths]);
 
   // --- Data Helpers ---
   const getSpentInInterval = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean; excludeRecurring?: boolean }) => {
@@ -437,6 +391,19 @@ export default function DashboardScreen() {
 
   const displaySaved = useMemo(() => viewMode === 'yearly' ? currentYearSaved : selectedMonthSaved, [viewMode, currentYearSaved, selectedMonthSaved]);
 
+  const chartWidth = useMemo(() => {
+    if (isDesktop) {
+      // Container max-width: 1200px. Left column is ~66% (flex 2 vs 1).
+      // PaddingHorizontal (20) + Gap (24) + Inner Padding (20*2)
+      // Approx calculation: Math.min(width, 1200) * 0.6 - paddings
+      const containerWidth = Math.min(width, 1200);
+      const availableGridWidth = containerWidth - 40; // minus desktopGrid paddingHorizontal
+      const leftColumnWidth = (availableGridWidth - 24) * (2 / 3); // minus gap, flex ratio
+      return leftColumnWidth - 40; // minus card padding (20*2)
+    }
+    return width - 40; // Mobile default
+  }, [width, isDesktop]);
+
   return (
     <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -460,306 +427,322 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* --- Summary Cards Section --- */}
-        <View style={styles.summarySection}>
-          <View style={[styles.summaryCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-              <View>
-                <Text style={[styles.label, { color: Colors.textSecondary }]}>Total Spent</Text>
-                <Text style={[styles.amount, { color: Colors.text }]}>{currencySymbol}{displaySpent.toLocaleString()}</Text>
+        <View style={isDesktop ? styles.desktopGrid : styles.mobileStack}>
+          {/* LEFT COLUMN (Desktop) / TOP (Mobile) */}
+          <View style={isDesktop ? styles.leftColumn : styles.column}>
+
+            {/* --- Summary Cards Section --- */}
+            <View style={styles.summarySection}>
+              <View style={[styles.summaryCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                  <View>
+                    <Text style={[styles.label, { color: Colors.textSecondary }]}>Total Spent</Text>
+                    <Text style={[styles.amount, { color: Colors.text }]}>{currencySymbol}{displaySpent.toLocaleString()}</Text>
+                  </View>
+                  {/* Remaining / Saved */}
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.label, { color: Colors.textSecondary }]}>Remaining</Text>
+                    {(viewMode === 'monthly' || activeMonthsCount > 0) ? (
+                      (income > 0 && (viewMode === 'monthly' ? isAfterIncomeStart(monthRange.start) : true)) ? (
+                        <>
+                          <Text style={[styles.amount, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
+                            {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
+                          </Text>
+                          {viewMode === 'yearly' && (
+                            <Text style={{ fontSize: 10, color: Colors.textSecondary, marginTop: 2, opacity: 0.8 }}>
+                              {activeMonthsCount} Month{activeMonthsCount !== 1 ? 's' : ''} • {currencySymbol}{(displaySaved + activeYearlyTotalSpent).toLocaleString()}
+                            </Text>
+                          )}
+                        </>
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
+                          <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
+                        </View>
+                      )
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
+                        <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Chart Area */}
+                <View style={styles.chartWrapper}>
+                  <HomeChart
+                    data={viewMode === 'monthly' ? currentMonthLineData : chartData}
+                    data2={viewMode === 'monthly' ? previousMonthLineData : undefined}
+                    viewMode={viewMode}
+                    maxValue={viewMode === 'monthly' ? maxMonthlyValue : maxYearlyValue}
+                    currencySymbol={currencySymbol}
+                    width={chartWidth}
+                  />
+                </View>
               </View>
-              {/* Remaining / Saved */}
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.label, { color: Colors.textSecondary }]}>Remaining</Text>
-                {(viewMode === 'monthly' || activeMonthsCount > 0) ? (
-                  (income > 0 && (viewMode === 'monthly' ? isAfterIncomeStart(monthRange.start) : true)) ? (
-                    <>
-                      <Text style={[styles.amount, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
-                        {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
+            </View>
+
+
+            {/* --- Budget Widget Section --- */}
+            <BudgetWidget
+              spent={viewMode === 'monthly' ? selectedMonthSpent : activeYearlyBudgetSpent}
+              budget={viewMode === 'monthly'
+                ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
+                : (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
+              }
+              currencySymbol={currencySymbol}
+              viewMode={viewMode}
+              monthsCount={activeMonthsCount}
+              onPress={() => router.push('/settings')}
+            />
+          </View>
+
+          {/* RIGHT COLUMN (Desktop) / BOTTOM (Mobile) */}
+          <View style={isDesktop ? styles.rightColumn : styles.column}>
+
+            {/* --- Period Selector --- */}
+            {/* On Desktop, this might arguably be better in the Left Column above charts? 
+                But for now let's place it top of Right Column or stick with mobile flow.
+                Actually, putting it above the chart in Left Column makes more semantic sense for the chart.
+                But let's stick to simple first: Right Column top. */}
+            <View style={{ marginBottom: 24, marginHorizontal: 16 }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: Colors.surface,
+                borderRadius: 20,
+                padding: 6,
+                borderWidth: 1,
+                borderColor: Colors.border,
+              }}>
+                {/* View Mode Toggle (Left) */}
+                <View style={{
+                  flexDirection: 'row',
+                  backgroundColor: Colors.surfaceHighlight,
+                  borderRadius: 14,
+                  padding: 2
+                }}>
+                  <TouchableOpacity
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: viewMode === 'monthly' ? Colors.background : 'transparent',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: viewMode === 'monthly' ? 0.1 : 0,
+                      shadowRadius: 2,
+                      borderWidth: 1,
+                      borderColor: viewMode === 'monthly' ? 'rgba(0,0,0,0.05)' : 'transparent',
+                    }}
+                    onPress={() => setViewMode('monthly')}
+                  >
+                    <Text style={{
+                      fontFamily: 'Geist-SemiBold',
+                      fontSize: 13,
+                      color: viewMode === 'monthly' ? Colors.text : Colors.textSecondary
+                    }}>Month</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: viewMode === 'yearly' ? Colors.background : 'transparent',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: viewMode === 'yearly' ? 0.1 : 0,
+                      shadowRadius: 2,
+                      borderWidth: 1,
+                      borderColor: viewMode === 'yearly' ? 'rgba(0,0,0,0.05)' : 'transparent',
+                    }}
+                    onPress={() => setViewMode('yearly')}
+                  >
+                    <Text style={{
+                      fontFamily: 'Geist-SemiBold',
+                      fontSize: 13,
+                      color: viewMode === 'yearly' ? Colors.text : Colors.textSecondary
+                    }}>Year</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Date Navigator (Right) */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (viewMode === 'yearly') {
+                        setSelectedYear(prev => prev - 1);
+                      } else {
+                        // Smart Navigation: Go to previous ACTIVE month
+                        let newIndex = selectedBarIndex - 1;
+                        while (newIndex >= 0) {
+                          if (monthlyData[newIndex].hasActivity || newIndex === 0) {
+                            // Found active month OR reached the very beginning (always show oldest)
+                            setSelectedBarIndex(newIndex);
+                            break;
+                          }
+                          newIndex--;
+                        }
+                        if (newIndex < 0 && selectedBarIndex > 0) {
+                          setSelectedBarIndex(0);
+                        }
+                      }
+                    }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderRadius: 10,
+                      backgroundColor: Colors.surfaceHighlight,
+                    }}
+                    disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
+                  >
+                    <ChevronLeft size={18} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
+                  </TouchableOpacity>
+
+                  <View style={{ minWidth: 100, alignItems: 'center' }}>
+                    <Text style={{
+                      fontFamily: 'Geist-Bold',
+                      fontSize: 14,
+                      color: Colors.text
+                    }}>
+                      {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${selectedBar.year}` : 'Current Month')}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (viewMode === 'yearly') {
+                        setSelectedYear(prev => prev + 1);
+                      } else {
+                        // Smart Navigation: Go to next ACTIVE month
+                        let newIndex = selectedBarIndex + 1;
+                        const maxIndex = monthlyData.length - 1;
+                        while (newIndex <= maxIndex) {
+                          if (monthlyData[newIndex].hasActivity || newIndex === maxIndex) {
+                            // Found active month OR reached current/latest month (always show current)
+                            setSelectedBarIndex(newIndex);
+                            break;
+                          }
+                          newIndex++;
+                        }
+                      }
+                    }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderRadius: 10,
+                      backgroundColor: Colors.surfaceHighlight,
+                    }}
+                    disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
+                  >
+                    <ChevronRight size={18} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* --- Owed Sections --- */}
+            {(() => {
+              const lentTransactions = transactions.filter(t => t.isLent && !t.isPaidBack);
+              const totalLent = lentTransactions.reduce((acc, t) => acc + t.amount, 0);
+
+              const owedTransactions = transactions.filter(t => t.isFriendPayment && !t.isPaidBack);
+              const totalOwed = owedTransactions.reduce((acc, t) => acc + t.amount, 0);
+
+              return (
+                <View style={{ gap: 16, marginBottom: 24 }}>
+                  {totalLent > 0 && (
+                    <DebtCreditCard
+                      type="owed"
+                      amount={totalLent}
+                      transactions={lentTransactions}
+                      onSettle={(id) => deleteTransaction(id)}
+                      currencySymbol={currencySymbol}
+                    />
+                  )}
+                  {totalOwed > 0 && (
+                    <DebtCreditCard
+                      type="debt"
+                      amount={totalOwed}
+                      transactions={owedTransactions}
+                      onSettle={(id) => editTransaction(id, { isPaidBack: true })}
+                      currencySymbol={currencySymbol}
+                    />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* --- Recent Transactions --- */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recent Activity</Text>
+                {recentTransactions.length > 5 && (
+                  <TouchableOpacity onPress={() => setShowAllTransactions(!showAllTransactions)}>
+                    <Text style={[styles.seeAll, { color: Colors.primary }]}>{showAllTransactions ? 'Show Less' : 'See All'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.transactionsList}>
+                {(() => {
+                  const groupedTransactions = recentTransactions.slice(0, showAllTransactions ? undefined : 5).reduce((groups, t) => {
+                    const date = new Date(t.date);
+                    const today = new Date();
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+
+                    let key = format(date, 'MMMM d, yyyy');
+                    if (date.toDateString() === today.toDateString()) {
+                      key = 'Today';
+                    } else if (date.toDateString() === yesterday.toDateString()) {
+                      key = 'Yesterday';
+                    }
+
+                    if (!groups[key]) {
+                      groups[key] = [];
+                    }
+                    groups[key].push(t);
+                    return groups;
+                  }, {} as Record<string, typeof recentTransactions>);
+
+                  return Object.entries(groupedTransactions).map(([date, txs]) => (
+                    <View key={date} style={{ marginBottom: 24 }}>
+                      <Text style={{
+                        fontSize: 12,
+                        fontFamily: 'Geist-SemiBold',
+                        color: Colors.textSecondary,
+                        marginBottom: 12,
+                        marginLeft: 20,
+                        textTransform: 'uppercase',
+                        letterSpacing: 1,
+                        opacity: 0.7
+                      }}>
+                        {date}
                       </Text>
-                      {viewMode === 'yearly' && (
-                        <Text style={{ fontSize: 10, color: Colors.textSecondary, marginTop: 2, opacity: 0.8 }}>
-                          {activeMonthsCount} Month{activeMonthsCount !== 1 ? 's' : ''} • {currencySymbol}{(displaySaved + activeYearlyTotalSpent).toLocaleString()}
-                        </Text>
-                      )}
-                    </>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
-                      <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
+                      {txs.map(t => (
+                        <ExpenseCard key={t.id} transaction={t} />
+                      ))}
                     </View>
-                  )
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
-                    <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
+                  ));
+                })()}
+                {recentTransactions.length === 0 && (
+                  <View style={[styles.emptyState, { backgroundColor: Colors.surface, marginHorizontal: 20 }]}>
+                    <View style={[styles.emptyIcon, { backgroundColor: Colors.surfaceHighlight }]}>
+                      <Wallet size={24} color={Colors.textSecondary} />
+                    </View>
+                    <Text style={[styles.emptyText, { color: Colors.textSecondary }]}>No transactions in this period</Text>
                   </View>
                 )}
               </View>
             </View>
 
-            {/* Chart Area */}
-            <View style={styles.chartWrapper}>
-              <HomeChart
-                data={viewMode === 'monthly' ? currentMonthLineData : chartData}
-                data2={viewMode === 'monthly' ? previousMonthLineData : undefined}
-                viewMode={viewMode}
-                maxValue={viewMode === 'monthly' ? maxMonthlyValue : maxYearlyValue}
-                currencySymbol={currencySymbol}
-              />
-            </View>
-          </View>
-        </View>
-
-
-        {/* --- Budget Widget Section --- */}
-        <BudgetWidget
-          spent={viewMode === 'monthly' ? selectedMonthSpent : activeYearlyBudgetSpent}
-          budget={viewMode === 'monthly'
-            ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
-            : (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
-          }
-          currencySymbol={currencySymbol}
-          viewMode={viewMode}
-          monthsCount={activeMonthsCount}
-          onPress={() => router.push('/settings')}
-        />
-
-        {/* --- Period Selector --- */}
-        <View style={{ marginBottom: 28, marginHorizontal: 16 }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: Colors.surface,
-            borderRadius: 20,
-            padding: 6,
-            borderWidth: 1,
-            borderColor: Colors.border,
-          }}>
-            {/* View Mode Toggle (Left) */}
-            <View style={{
-              flexDirection: 'row',
-              backgroundColor: Colors.surfaceHighlight,
-              borderRadius: 14,
-              padding: 2
-            }}>
-              <TouchableOpacity
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  borderRadius: 12,
-                  backgroundColor: viewMode === 'monthly' ? Colors.background : 'transparent',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: viewMode === 'monthly' ? 0.1 : 0,
-                  shadowRadius: 2,
-                  borderWidth: 1,
-                  borderColor: viewMode === 'monthly' ? 'rgba(0,0,0,0.05)' : 'transparent',
-                }}
-                onPress={() => setViewMode('monthly')}
-              >
-                <Text style={{
-                  fontFamily: 'Geist-SemiBold',
-                  fontSize: 13,
-                  color: viewMode === 'monthly' ? Colors.text : Colors.textSecondary
-                }}>Month</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  borderRadius: 12,
-                  backgroundColor: viewMode === 'yearly' ? Colors.background : 'transparent',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: viewMode === 'yearly' ? 0.1 : 0,
-                  shadowRadius: 2,
-                  borderWidth: 1,
-                  borderColor: viewMode === 'yearly' ? 'rgba(0,0,0,0.05)' : 'transparent',
-                }}
-                onPress={() => setViewMode('yearly')}
-              >
-                <Text style={{
-                  fontFamily: 'Geist-SemiBold',
-                  fontSize: 13,
-                  color: viewMode === 'yearly' ? Colors.text : Colors.textSecondary
-                }}>Year</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Date Navigator (Right) */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 6 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  if (viewMode === 'yearly') {
-                    setSelectedYear(prev => prev - 1);
-                  } else {
-                    // Smart Navigation: Go to previous ACTIVE month
-                    let newIndex = selectedBarIndex - 1;
-                    while (newIndex >= 0) {
-                      if (monthlyData[newIndex].hasActivity || newIndex === 0) {
-                        // Found active month OR reached the very beginning (always show oldest)
-                        setSelectedBarIndex(newIndex);
-                        break;
-                      }
-                      newIndex--;
-                    }
-                    if (newIndex < 0 && selectedBarIndex > 0) {
-                      setSelectedBarIndex(0);
-                    }
-                  }
-                }}
-                style={{
-                  width: 32,
-                  height: 32,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderRadius: 10,
-                  backgroundColor: Colors.surfaceHighlight,
-                }}
-                disabled={viewMode === 'yearly' ? false : selectedBarIndex <= 0}
-              >
-                <ChevronLeft size={18} color={Colors.text} opacity={selectedBarIndex <= 0 && viewMode !== 'yearly' ? 0.3 : 1} />
-              </TouchableOpacity>
-
-              <View style={{ minWidth: 100, alignItems: 'center' }}>
-                <Text style={{
-                  fontFamily: 'Geist-Bold',
-                  fontSize: 14,
-                  color: Colors.text
-                }}>
-                  {viewMode === 'yearly' ? selectedYear : (selectedBar ? `${selectedBar.label} ${selectedBar.year}` : 'Current Month')}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => {
-                  if (viewMode === 'yearly') {
-                    setSelectedYear(prev => prev + 1);
-                  } else {
-                    // Smart Navigation: Go to next ACTIVE month
-                    let newIndex = selectedBarIndex + 1;
-                    const maxIndex = monthlyData.length - 1;
-                    while (newIndex <= maxIndex) {
-                      if (monthlyData[newIndex].hasActivity || newIndex === maxIndex) {
-                        // Found active month OR reached current/latest month (always show current)
-                        setSelectedBarIndex(newIndex);
-                        break;
-                      }
-                      newIndex++;
-                    }
-                  }
-                }}
-                style={{
-                  width: 32,
-                  height: 32,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderRadius: 10,
-                  backgroundColor: Colors.surfaceHighlight,
-                }}
-                disabled={viewMode === 'yearly' ? selectedYear >= new Date().getFullYear() : selectedBarIndex >= monthlyData.length - 1}
-              >
-                <ChevronRight size={18} color={Colors.text} opacity={(selectedBarIndex >= monthlyData.length - 1 && viewMode !== 'yearly') || (selectedYear >= new Date().getFullYear() && viewMode === 'yearly') ? 0.3 : 1} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* --- Owed Sections --- */}
-        {(() => {
-          const lentTransactions = transactions.filter(t => t.isLent && !t.isPaidBack);
-          const totalLent = lentTransactions.reduce((acc, t) => acc + t.amount, 0);
-
-          const owedTransactions = transactions.filter(t => t.isFriendPayment && !t.isPaidBack);
-          const totalOwed = owedTransactions.reduce((acc, t) => acc + t.amount, 0);
-
-          return (
-            <View style={{ gap: 16, marginBottom: 24 }}>
-              {totalLent > 0 && (
-                <DebtCreditCard
-                  type="owed"
-                  amount={totalLent}
-                  transactions={lentTransactions}
-                  onSettle={(id) => deleteTransaction(id)}
-                  currencySymbol={currencySymbol}
-                />
-              )}
-              {totalOwed > 0 && (
-                <DebtCreditCard
-                  type="debt"
-                  amount={totalOwed}
-                  transactions={owedTransactions}
-                  onSettle={(id) => editTransaction(id, { isPaidBack: true })}
-                  currencySymbol={currencySymbol}
-                />
-              )}
-            </View>
-          );
-        })()}
-
-        {/* --- Recent Transactions --- */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recent Activity</Text>
-            {recentTransactions.length > 5 && (
-              <TouchableOpacity onPress={() => setShowAllTransactions(!showAllTransactions)}>
-                <Text style={[styles.seeAll, { color: Colors.primary }]}>{showAllTransactions ? 'Show Less' : 'See All'}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.transactionsList}>
-            {(() => {
-              const groupedTransactions = recentTransactions.slice(0, showAllTransactions ? undefined : 5).reduce((groups, t) => {
-                const date = new Date(t.date);
-                const today = new Date();
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-
-                let key = format(date, 'MMMM d, yyyy');
-                if (date.toDateString() === today.toDateString()) {
-                  key = 'Today';
-                } else if (date.toDateString() === yesterday.toDateString()) {
-                  key = 'Yesterday';
-                }
-
-                if (!groups[key]) {
-                  groups[key] = [];
-                }
-                groups[key].push(t);
-                return groups;
-              }, {} as Record<string, typeof recentTransactions>);
-
-              return Object.entries(groupedTransactions).map(([date, txs]) => (
-                <View key={date} style={{ marginBottom: 24 }}>
-                  <Text style={{
-                    fontSize: 12,
-                    fontFamily: 'Geist-SemiBold',
-                    color: Colors.textSecondary,
-                    marginBottom: 12,
-                    marginLeft: 20,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
-                    opacity: 0.7
-                  }}>
-                    {date}
-                  </Text>
-                  {txs.map(t => (
-                    <ExpenseCard key={t.id} transaction={t} />
-                  ))}
-                </View>
-              ));
-            })()}
-            {recentTransactions.length === 0 && (
-              <View style={[styles.emptyState, { backgroundColor: Colors.surface, marginHorizontal: 20 }]}>
-                <View style={[styles.emptyIcon, { backgroundColor: Colors.surfaceHighlight }]}>
-                  <Wallet size={24} color={Colors.textSecondary} />
-                </View>
-                <Text style={[styles.emptyText, { color: Colors.textSecondary }]}>No transactions in this period</Text>
-              </View>
-            )}
           </View>
         </View>
 
@@ -774,8 +757,27 @@ export default function DashboardScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
+  desktopGrid: {
+    flexDirection: 'row',
+    gap: 2,
+    paddingHorizontal: 20,
+    alignItems: 'flex-start',
+  },
+  mobileStack: {
+    flexDirection: 'column',
+  },
+  leftColumn: {
+    flex: 2,
+    gap: 0,
+  },
+  rightColumn: {
+    flex: 1,
+    gap: 0,
+  },
+  column: {
+    width: '100%',
+  },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,

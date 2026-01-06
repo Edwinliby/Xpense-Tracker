@@ -3,10 +3,10 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, format, isWithinInterval, startOfMonth, subMonths } from 'date-fns';
 import React, { useMemo } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LineChart, lineDataItem } from 'react-native-gifted-charts';
 
-export const SpendingTrendsWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
+export const SpendingTrendsWidget: React.FC<{ targetDate: Date, width?: number }> = ({ targetDate, width }) => {
     const Colors = useThemeColor();
     const Styles = useStyles();
     const { transactions, currencySymbol } = useExpense();
@@ -42,8 +42,8 @@ export const SpendingTrendsWidget: React.FC<{ targetDate: Date }> = ({ targetDat
     const avgSpending = trendsData.reduce((sum, d) => sum + (d.value || 0), 0) / trendsData.length;
 
     // Calculate responsive width
-    const screenWidth = Dimensions.get('window').width;
-    const chartWidth = screenWidth; // Extra padding
+    const { width: screenWidth } = useWindowDimensions();
+    const chartWidth = width ? (width - 48) : screenWidth; // 48 is (padding: 24 * 2) from container style
 
     return (
         <View style={[

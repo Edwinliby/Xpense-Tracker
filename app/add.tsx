@@ -2,6 +2,7 @@ import { Button } from '@/components/Button';
 import { ImageEditor } from '@/components/ImageEditor';
 import { ImageViewer } from '@/components/ImageViewer';
 import { Input } from '@/components/Input';
+import { WebDatePicker } from '@/components/WebDatePicker';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -12,7 +13,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import * as Icons from 'lucide-react-native';
 import { Calendar, Camera, Image as ImageIcon, RotateCw, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddTransactionScreen() {
@@ -38,7 +39,6 @@ export default function AddTransactionScreen() {
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [isRecurring, setIsRecurring] = useState(false);
     const [excludeFromBudget, setExcludeFromBudget] = useState(false);
-
 
 
     useFocusEffect(
@@ -213,347 +213,353 @@ export default function AddTransactionScreen() {
         }
     }, []);
 
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 768;
+
     return (
-        <SafeAreaView style={{ backgroundColor: Colors.background, flex: 1 }}>
+        <SafeAreaView style={{ backgroundColor: isDesktop ? Colors.surface : Colors.background, flex: 1, alignItems: 'center' }}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-                    <X size={24} color={Colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: Colors.text }]}>
-                    {isEditing ? 'Edit Transaction' : 'New Transaction'}
-                </Text>
-                <View style={{ width: 24 }} />
-            </View>
+            <View style={{
+                width: '100%',
+                maxWidth: 800,
+                flex: 1,
+                backgroundColor: Colors.background,
+                ...(isDesktop && {
+                    marginVertical: 20,
+                    borderRadius: 24,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 5,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: Colors.border,
+                })
+            }}>
 
-            <ScrollView
-                style={{ flex: 1 }}
-                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Hero Amount Section */}
-                <View style={styles.heroSection}>
-                    <View style={styles.amountDisplay}>
-                        <Text style={[styles.currencySymbol, { color: amount ? Colors.text : Colors.textSecondary }]}>
-                            {currencySymbol}
-                        </Text>
-                        <Text style={[styles.heroText, { color: amount ? Colors.text : Colors.textSecondary }]}>
-                            {amount || '0'}
-                        </Text>
-                        <View style={[styles.cursor, { backgroundColor: Colors.primary }]} />
-                    </View>
-                    <TextInput
-                        value={amount}
-                        onChangeText={(text) => {
-                            // Simple validation to prevent multiple decimals
-                            if (text.split('.').length > 2) return;
-                            setAmount(text);
-                        }}
-                        keyboardType="numeric"
-                        style={styles.hiddenInput}
-                        autoFocus={!isEditing}
-                    />
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+                        <X size={24} color={Colors.text} />
+                    </TouchableOpacity>
+                    <Text style={[styles.headerTitle, { color: Colors.text }]}>
+                        {isEditing ? 'Edit Transaction' : 'New Transaction'}
+                    </Text>
+                    <View style={{ width: 24 }} />
                 </View>
 
-                {/* Type Toggle */}
-                <View style={[styles.segmentContainer, { backgroundColor: Colors.surfaceHighlight }]}>
-                    {(['expense', 'income'] as const).map((t) => (
-                        <TouchableOpacity
-                            key={t}
-                            style={[
-                                styles.segmentButton,
-                                type === t && {
-                                    backgroundColor: t === 'income' ? Colors.success : Colors.danger,
-                                    shadowColor: t === 'income' ? Colors.success : Colors.danger,
-                                    shadowOffset: { width: 0, height: 2 },
-                                    shadowOpacity: 0.3,
-                                    shadowRadius: 4,
-                                    elevation: 4
-                                }
-                            ]}
-                            onPress={() => setType(t)}
-                        >
-                            <Text style={[
-                                styles.segmentText,
-                                { color: type === t ? '#fff' : Colors.textSecondary }
-                            ]}>
-                                {t.charAt(0).toUpperCase() + t.slice(1)}
+                <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Hero Amount Section */}
+                    <View style={styles.heroSection}>
+                        <View style={styles.amountDisplay}>
+                            <Text style={[styles.currencySymbol, { color: amount ? Colors.text : Colors.textSecondary }]}>
+                                {currencySymbol}
                             </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                            <Text style={[styles.heroText, { color: amount ? Colors.text : Colors.textSecondary }]}>
+                                {amount || '0'}
+                            </Text>
+                            <View style={[styles.cursor, { backgroundColor: Colors.primary }]} />
+                        </View>
+                        <TextInput
+                            value={amount}
+                            onChangeText={(text) => {
+                                // Simple validation to prevent multiple decimals
+                                if (text.split('.').length > 2) return;
+                                setAmount(text);
+                            }}
+                            keyboardType="numeric"
+                            style={styles.hiddenInput}
+                            autoFocus={!isEditing}
+                        />
+                    </View>
 
-                {/* Category Section */}
-                <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>Category</Text>
-                <View style={styles.categoryContainer}>
-                    {categories.map((cat) => {
-                        const IconComponent = (Icons as any)[cat.icon];
-                        const isSelected = category === cat.name;
-                        return (
+                    {/* Type Toggle */}
+                    <View style={[styles.segmentContainer, { backgroundColor: Colors.surfaceHighlight }]}>
+                        {(['expense', 'income'] as const).map((t) => (
                             <TouchableOpacity
-                                key={cat.id}
+                                key={t}
                                 style={[
-                                    styles.categoryChip,
-                                    {
-                                        backgroundColor: isSelected ? cat.color : Colors.surface,
-                                        borderColor: isSelected ? cat.color : Colors.border,
-                                        transform: [{ scale: isSelected ? 1.05 : 1 }]
+                                    styles.segmentButton,
+                                    type === t && {
+                                        backgroundColor: t === 'income' ? Colors.success : Colors.danger,
+                                        shadowColor: t === 'income' ? Colors.success : Colors.danger,
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.3,
+                                        shadowRadius: 4,
+                                        elevation: 4
                                     }
                                 ]}
-                                onPress={() => setCategory(cat.name)}
+                                onPress={() => setType(t)}
                             >
-                                {IconComponent && (
-                                    <IconComponent
-                                        size={16}
-                                        color={isSelected ? '#fff' : cat.color}
-                                    />
-                                )}
                                 <Text style={[
-                                    styles.categoryText,
-                                    { color: isSelected ? '#fff' : Colors.text }
+                                    styles.segmentText,
+                                    { color: type === t ? '#fff' : Colors.textSecondary }
                                 ]}>
-                                    {cat.name}
+                                    {t.charAt(0).toUpperCase() + t.slice(1)}
                                 </Text>
                             </TouchableOpacity>
-                        );
-                    })}
-                </View>
+                        ))}
+                    </View>
 
-                {/* Details Card */}
-                <View style={[styles.card, { backgroundColor: Colors.surface }]}>
-                    {/* Date */}
-                    <View style={styles.cardRow}>
-                        <View style={styles.cardIcon}>
-                            <Calendar size={20} color={Colors.textSecondary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.cardLabel, { color: Colors.textSecondary }]}>Date</Text>
-                            {Platform.OS === 'web' ? (
-                                <input
-                                    type="date"
-                                    value={date.toISOString().split('T')[0]}
-                                    onChange={(e) => {
-                                        const newDate = new Date(e.target.value);
-                                        if (!isNaN(newDate.getTime())) setDate(newDate);
-                                    }}
-                                    style={{
-                                        border: 'none',
-                                        background: 'transparent',
-                                        color: Colors.text,
-                                        fontSize: 16,
-                                        fontFamily: 'inherit',
-                                        outline: 'none',
-                                        width: '100%',
-                                        padding: 0,
-                                    }}
-                                />
-                            ) : (
-                                <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                                    <Text style={[styles.cardValue, { color: Colors.text }]}>
-                                        {format(date, 'MMMM d, yyyy')}
+                    {/* Category Section */}
+                    <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>Category</Text>
+                    <View style={styles.categoryContainer}>
+                        {categories.map((cat) => {
+                            const IconComponent = (Icons as any)[cat.icon];
+                            const isSelected = category === cat.name;
+                            return (
+                                <TouchableOpacity
+                                    key={cat.id}
+                                    style={[
+                                        styles.categoryChip,
+                                        {
+                                            backgroundColor: isSelected ? cat.color : Colors.surface,
+                                            borderColor: isSelected ? cat.color : Colors.border,
+                                            transform: [{ scale: isSelected ? 1.05 : 1 }]
+                                        }
+                                    ]}
+                                    onPress={() => setCategory(cat.name)}
+                                >
+                                    {IconComponent && (
+                                        <IconComponent
+                                            size={16}
+                                            color={isSelected ? '#fff' : cat.color}
+                                        />
+                                    )}
+                                    <Text style={[
+                                        styles.categoryText,
+                                        { color: isSelected ? '#fff' : Colors.text }
+                                    ]}>
+                                        {cat.name}
                                     </Text>
                                 </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    {/* Details Card */}
+                    <View style={[styles.card, { backgroundColor: Colors.surface }]}>
+                        {/* Date */}
+                        <View style={styles.cardRow}>
+                            <View style={styles.cardIcon}>
+                                <Calendar size={20} color={Colors.textSecondary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.cardLabel, { color: Colors.textSecondary }]}>Date</Text>
+                                {Platform.OS === 'web' ? (
+                                    <WebDatePicker value={date} onChange={setDate} />
+                                ) : (
+                                    <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                                        <Text style={[styles.cardValue, { color: Colors.text }]}>
+                                            {format(date, 'MMMM d, yyyy')}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                            {Platform.OS !== 'web' && showDatePicker && (
+                                <DateTimePicker
+                                    value={date}
+                                    mode="date"
+                                    display="default"
+                                    onChange={onChangeDate}
+                                    themeVariant={Colors.background === '#FFFFFF' ? 'light' : 'dark'}
+                                />
                             )}
                         </View>
-                        {Platform.OS !== 'web' && showDatePicker && (
-                            <DateTimePicker
-                                value={date}
-                                mode="date"
-                                display="default"
-                                onChange={onChangeDate}
-                                themeVariant={Colors.background === '#FFFFFF' ? 'light' : 'dark'}
-                            />
-                        )}
+
+                        <View style={[styles.divider, { backgroundColor: Colors.border }]} />
+
+                        {/* Description */}
+                        <View style={styles.cardRow}>
+                            <View style={styles.cardIcon}>
+                                <Icons.FileText size={20} color={Colors.textSecondary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <TextInput
+                                    value={description}
+                                    onChangeText={setDescription}
+                                    placeholder="Add a note..."
+                                    placeholderTextColor={Colors.textSecondary}
+                                    style={[
+                                        styles.plainInput,
+                                        {
+                                            color: Colors.text,
+                                            height: 48,
+                                            width: '100%',
+                                            textAlignVertical: 'center'
+                                        }
+                                    ]}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={[styles.divider, { backgroundColor: Colors.border }]} />
+
+                        {/* Receipt */}
+                        <View style={[styles.cardRow, { alignItems: 'flex-start' }]}>
+                            <View style={[styles.cardIcon, { marginTop: 2 }]}>
+                                <ImageIcon size={20} color={Colors.textSecondary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.cardLabel, { color: Colors.textSecondary, marginBottom: 8 }]}>Receipt</Text>
+                                {receiptImage ? (
+                                    <View style={styles.previewWrapper}>
+                                        <TouchableOpacity onPress={() => setShowImageViewer(true)}>
+                                            <Image source={{ uri: receiptImage }} style={styles.miniPreview} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.removeReceipt}
+                                            onPress={() => Alert.alert('Remove', 'Delete receipt?', [
+                                                { text: 'Cancel', style: 'cancel' },
+                                                { text: 'Delete', style: 'destructive', onPress: () => setReceiptImage(null) }
+                                            ])}
+                                        >
+                                            <X size={12} color="#fff" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <View style={styles.receiptActions}>
+                                        <TouchableOpacity style={[styles.actionChip, { backgroundColor: Colors.background }]} onPress={pickImage}>
+                                            <ImageIcon size={14} color={Colors.text} />
+                                            <Text style={[styles.actionChipText, { color: Colors.text }]}>Gallery</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={[styles.actionChip, { backgroundColor: Colors.background }]} onPress={takePhoto}>
+                                            <Camera size={14} color={Colors.text} />
+                                            <Text style={[styles.actionChipText, { color: Colors.text }]}>Camera</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
                     </View>
 
-                    <View style={[styles.divider, { backgroundColor: Colors.border }]} />
+                    {/* Extras Section */}
+                    {type === 'expense' && (
+                        <View style={{ marginTop: 24 }}>
+                            <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>Options</Text>
 
-                    {/* Description */}
-                    <View style={styles.cardRow}>
-                        <View style={styles.cardIcon}>
-                            <Icons.FileText size={20} color={Colors.textSecondary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <TextInput
-                                value={description}
-                                onChangeText={setDescription}
-                                placeholder="Add a note..."
-                                placeholderTextColor={Colors.textSecondary}
-                                style={[
-                                    styles.plainInput,
-                                    {
-                                        color: Colors.text,
-                                        height: 48,
-                                        width: '100%',
-                                        textAlignVertical: 'center'
-                                    }
-                                ]}
-                            />
-                        </View>
-                    </View>
-
-                    <View style={[styles.divider, { backgroundColor: Colors.border }]} />
-
-                    {/* Receipt */}
-                    <View style={[styles.cardRow, { alignItems: 'flex-start' }]}>
-                        <View style={[styles.cardIcon, { marginTop: 2 }]}>
-                            <ImageIcon size={20} color={Colors.textSecondary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.cardLabel, { color: Colors.textSecondary, marginBottom: 8 }]}>Receipt</Text>
-                            {receiptImage ? (
-                                <View style={styles.previewWrapper}>
-                                    <TouchableOpacity onPress={() => setShowImageViewer(true)}>
-                                        <Image source={{ uri: receiptImage }} style={styles.miniPreview} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.removeReceipt}
-                                        onPress={() => Alert.alert('Remove', 'Delete receipt?', [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            { text: 'Delete', style: 'destructive', onPress: () => setReceiptImage(null) }
-                                        ])}
-                                    >
-                                        <X size={12} color="#fff" />
-                                    </TouchableOpacity>
+                            {/* Repeat */}
+                            <View style={[styles.optionRow, { backgroundColor: Colors.surface }]}>
+                                <View style={styles.optionLeft}>
+                                    <RotateCw size={20} color={Colors.primary} />
+                                    <Text style={[styles.optionText, { color: Colors.text }]}>Repeat Monthly</Text>
                                 </View>
-                            ) : (
-                                <View style={styles.receiptActions}>
-                                    <TouchableOpacity style={[styles.actionChip, { backgroundColor: Colors.background }]} onPress={pickImage}>
-                                        <ImageIcon size={14} color={Colors.text} />
-                                        <Text style={[styles.actionChipText, { color: Colors.text }]}>Gallery</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.actionChip, { backgroundColor: Colors.background }]} onPress={takePhoto}>
-                                        <Camera size={14} color={Colors.text} />
-                                        <Text style={[styles.actionChipText, { color: Colors.text }]}>Camera</Text>
-                                    </TouchableOpacity>
+                                <Switch
+                                    value={isRecurring}
+                                    onValueChange={setIsRecurring}
+                                    trackColor={{ false: Colors.border, true: Colors.primary }}
+                                />
+                            </View>
+
+
+
+                            {/* Exclude from Budget */}
+                            <View style={[styles.optionRow, { backgroundColor: Colors.surface }]}>
+                                <View style={styles.optionLeft}>
+                                    <Icons.EyeOff size={20} color={Colors.warning} />
+                                    <View>
+                                        <Text style={[styles.optionText, { color: Colors.text }]}>Exclude from Budget</Text>
+                                        <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>Won&apos;t count towards monthly limit</Text>
+                                    </View>
                                 </View>
-                            )}
+                                <Switch
+                                    value={excludeFromBudget}
+                                    onValueChange={setExcludeFromBudget}
+                                    trackColor={{ false: Colors.border, true: Colors.warning }}
+                                />
+                            </View>
+
+                            {/* Split/Debt Options */}
+                            <View style={[styles.optionBlock, { backgroundColor: Colors.surface, marginTop: 12 }]}>
+                                {/* Friend Paid */}
+                                <View style={styles.optionRowNoBg}>
+                                    <View style={styles.optionLeft}>
+                                        <Icons.Users size={20} color={Colors.danger} />
+                                        <View>
+                                            <Text style={[styles.optionText, { color: Colors.text }]}>Paid by Friend</Text>
+                                            <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>You owe them</Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={isFriendPayment}
+                                        onValueChange={(val) => {
+                                            setIsFriendPayment(val);
+                                            if (val) setIsLent(false);
+                                        }}
+                                        trackColor={{ false: Colors.border, true: Colors.danger }}
+                                    />
+                                </View>
+                                {isFriendPayment && (
+                                    <Input
+                                        placeholder="Friend's Name"
+                                        value={paidBy}
+                                        onChangeText={setPaidBy}
+                                        style={{
+                                            marginTop: 8,
+                                            backgroundColor: Colors.background,
+                                            borderWidth: 0
+                                        }}
+                                    />
+                                )}
+
+                                <View style={[styles.divider, { backgroundColor: Colors.border, marginVertical: 12 }]} />
+
+                                {/* Lent To */}
+                                <View style={styles.optionRowNoBg}>
+                                    <View style={styles.optionLeft}>
+                                        <Icons.HandCoins size={20} color={Colors.success} />
+                                        <View>
+                                            <Text style={[styles.optionText, { color: Colors.text }]}>Lent to Friend</Text>
+                                            <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>They owe you</Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={isLent}
+                                        onValueChange={(val) => {
+                                            setIsLent(val);
+                                            if (val) setIsFriendPayment(false);
+                                        }}
+                                        trackColor={{ false: Colors.border, true: Colors.success }}
+                                    />
+                                </View>
+                                {isLent && (
+                                    <Input
+                                        placeholder="Friend's Name"
+                                        value={lentTo}
+                                        onChangeText={setLentTo}
+                                        style={{
+                                            marginTop: 8,
+                                            backgroundColor: Colors.background,
+                                            borderWidth: 0
+                                        }}
+                                    />
+                                )}
+                            </View>
                         </View>
-                    </View>
+                    )}
+
+                </ScrollView>
+
+                <View style={[styles.footer, { backgroundColor: Colors.background, borderTopColor: Colors.border }]}>
+                    {isEditing && (
+                        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                            <Trash2 size={20} color={Colors.danger} />
+                        </TouchableOpacity>
+                    )}
+                    <Button
+                        title={isEditing ? "Update Transaction" : "Save Transaction"}
+                        onPress={handleSave}
+                        style={{ flex: 1 }}
+                        textStyle={{ fontSize: 16, fontFamily: 'Geist-Bold' }}
+                    />
                 </View>
-
-                {/* Extras Section */}
-                {type === 'expense' && (
-                    <View style={{ marginTop: 24 }}>
-                        <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>Options</Text>
-
-                        {/* Repeat */}
-                        <View style={[styles.optionRow, { backgroundColor: Colors.surface }]}>
-                            <View style={styles.optionLeft}>
-                                <RotateCw size={20} color={Colors.primary} />
-                                <Text style={[styles.optionText, { color: Colors.text }]}>Repeat Monthly</Text>
-                            </View>
-                            <Switch
-                                value={isRecurring}
-                                onValueChange={setIsRecurring}
-                                trackColor={{ false: Colors.border, true: Colors.primary }}
-                            />
-                        </View>
-
-
-
-                        {/* Exclude from Budget */}
-                        <View style={[styles.optionRow, { backgroundColor: Colors.surface }]}>
-                            <View style={styles.optionLeft}>
-                                <Icons.EyeOff size={20} color={Colors.warning} />
-                                <View>
-                                    <Text style={[styles.optionText, { color: Colors.text }]}>Exclude from Budget</Text>
-                                    <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>Won&apos;t count towards monthly limit</Text>
-                                </View>
-                            </View>
-                            <Switch
-                                value={excludeFromBudget}
-                                onValueChange={setExcludeFromBudget}
-                                trackColor={{ false: Colors.border, true: Colors.warning }}
-                            />
-                        </View>
-
-                        {/* Split/Debt Options */}
-                        <View style={[styles.optionBlock, { backgroundColor: Colors.surface, marginTop: 12 }]}>
-                            {/* Friend Paid */}
-                            <View style={styles.optionRowNoBg}>
-                                <View style={styles.optionLeft}>
-                                    <Icons.Users size={20} color={Colors.danger} />
-                                    <View>
-                                        <Text style={[styles.optionText, { color: Colors.text }]}>Paid by Friend</Text>
-                                        <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>You owe them</Text>
-                                    </View>
-                                </View>
-                                <Switch
-                                    value={isFriendPayment}
-                                    onValueChange={(val) => {
-                                        setIsFriendPayment(val);
-                                        if (val) setIsLent(false);
-                                    }}
-                                    trackColor={{ false: Colors.border, true: Colors.danger }}
-                                />
-                            </View>
-                            {isFriendPayment && (
-                                <Input
-                                    placeholder="Friend's Name"
-                                    value={paidBy}
-                                    onChangeText={setPaidBy}
-                                    style={{
-                                        marginTop: 8,
-                                        backgroundColor: Colors.background,
-                                        borderWidth: 0
-                                    }}
-                                />
-                            )}
-
-                            <View style={[styles.divider, { backgroundColor: Colors.border, marginVertical: 12 }]} />
-
-                            {/* Lent To */}
-                            <View style={styles.optionRowNoBg}>
-                                <View style={styles.optionLeft}>
-                                    <Icons.HandCoins size={20} color={Colors.success} />
-                                    <View>
-                                        <Text style={[styles.optionText, { color: Colors.text }]}>Lent to Friend</Text>
-                                        <Text style={[styles.optionSub, { color: Colors.textSecondary }]}>They owe you</Text>
-                                    </View>
-                                </View>
-                                <Switch
-                                    value={isLent}
-                                    onValueChange={(val) => {
-                                        setIsLent(val);
-                                        if (val) setIsFriendPayment(false);
-                                    }}
-                                    trackColor={{ false: Colors.border, true: Colors.success }}
-                                />
-                            </View>
-                            {isLent && (
-                                <Input
-                                    placeholder="Friend's Name"
-                                    value={lentTo}
-                                    onChangeText={setLentTo}
-                                    style={{
-                                        marginTop: 8,
-                                        backgroundColor: Colors.background,
-                                        borderWidth: 0
-                                    }}
-                                />
-                            )}
-                        </View>
-                    </View>
-                )}
-
-            </ScrollView>
-
-            <View style={[styles.footer, { backgroundColor: Colors.background, borderTopColor: Colors.border }]}>
-                {isEditing && (
-                    <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                        <Trash2 size={20} color={Colors.danger} />
-                    </TouchableOpacity>
-                )}
-                <Button
-                    title={isEditing ? "Update Transaction" : "Save Transaction"}
-                    onPress={handleSave}
-                    style={{ flex: 1 }}
-                    textStyle={{ fontSize: 16, fontFamily: 'Geist-Bold' }}
-                />
-            </View>
+            </View >
 
             <ImageEditor
                 visible={showImageEditor}
@@ -570,7 +576,7 @@ export default function AddTransactionScreen() {
                 imageUri={receiptImage}
                 onClose={() => setShowImageViewer(false)}
             />
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 

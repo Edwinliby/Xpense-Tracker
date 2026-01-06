@@ -5,7 +5,7 @@ import { endOfMonth, isWithinInterval, startOfMonth, subMonths } from 'date-fns'
 import { LinearGradient } from 'expo-linear-gradient';
 import { AlertCircle, CheckCircle2, TrendingDown, TrendingUp, Wallet } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export const QuickInsightsWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
@@ -83,45 +83,95 @@ export const QuickInsightsWidget: React.FC<{ targetDate: Date }> = ({ targetDate
         ];
     }, [transactions, budget, currencySymbol, Colors, targetDate]);
 
+    const scrollViewRef = React.useRef<ScrollView>(null);
+    const [isDragging, setIsDragging] = React.useState(false);
+    const dragStartX = React.useRef(0);
+    const scrollStartX = React.useRef(0);
+
+    // Web Drag Logic
+
+
+    // To make this robust, we need to track scroll offset.
+    const scrollOffset = React.useRef(0);
+    const handleScroll = (event: any) => {
+        scrollOffset.current = event.nativeEvent.contentOffset.x;
+    };
+
+    const onMouseMove = (e: any) => {
+        if (!isDragging || Platform.OS !== 'web' || !scrollViewRef.current) return;
+        const x = e.nativeEvent.pageX;
+        const walk = (x - dragStartX.current) * 1.5; // Scroll-fast
+        scrollViewRef.current.scrollTo({ x: scrollStartX.current - walk, animated: false });
+    };
+
+    const onMouseUp = () => {
+        if (Platform.OS !== 'web') return;
+        setIsDragging(false);
+    };
+
+    // We need to capture scroll start position on mouse down.
+    // Modified onMouseDown:
+    const handleMouseDown = (e: any) => {
+        if (Platform.OS !== 'web') return;
+        setIsDragging(true);
+        dragStartX.current = e.nativeEvent.pageX;
+        scrollStartX.current = scrollOffset.current;
+    };
+
+
     return (
         <View style={styles.container}>
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+            <View
+                // @ts-ignore - React Native Web supports these props but types might not
+                onMouseDown={handleMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                onMouseLeave={onMouseUp}
+                style={{ cursor: isDragging ? 'grabbing' : 'grab' } as any}
+
             >
-                {insights.map((item) => (
-                    <View
-                        key={item.id}
-                        style={[
-                            styles.cardContainer,
-                            Styles.shadow,
-                            {
-                                backgroundColor: Colors.surface,
-                                shadowColor: Colors.shadow,
-                                borderColor: 'rgba(255,255,255,0.05)',
-                                borderWidth: 1
-                            }
-                        ]}
-                    >
-                        <LinearGradient
-                            colors={item.bgGradient as [string, string]}
-                            style={styles.cardGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                <ScrollView
+                    ref={scrollViewRef}
+                    horizontal
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                    style={{ userSelect: 'none' } as any} // Prevent text selection while dragging
+                >
+                    {insights.map((item) => (
+                        <View
+                            key={item.id}
+                            style={[
+                                styles.cardContainer,
+                                Styles.shadow,
+                                {
+                                    backgroundColor: Colors.surface,
+                                    shadowColor: Colors.shadow,
+                                    borderColor: 'rgba(255,255,255,0.05)',
+                                    borderWidth: 1
+                                }
+                            ]}
                         >
-                            <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-                                {React.createElement(item.icon, { size: 18, color: item.color })}
-                            </View>
-                            <View>
-                                <Text style={[styles.cardTitle, { color: Colors.textSecondary }]}>{item.title}</Text>
-                                <Text style={[styles.cardValue, { color: Colors.text }]}>{item.value}</Text>
-                                <Text style={[styles.cardSubtitle, { color: Colors.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
-                            </View>
-                        </LinearGradient>
-                    </View>
-                ))}
-            </ScrollView>
+                            <LinearGradient
+                                colors={item.bgGradient as [string, string]}
+                                style={styles.cardGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
+                                    {React.createElement(item.icon, { size: 18, color: item.color })}
+                                </View>
+                                <View>
+                                    <Text style={[styles.cardTitle, { color: Colors.textSecondary }]}>{item.title}</Text>
+                                    <Text style={[styles.cardValue, { color: Colors.text }]}>{item.value}</Text>
+                                    <Text style={[styles.cardSubtitle, { color: Colors.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
+                                </View>
+                            </LinearGradient>
+                        </View>
+                    ))}
+                </ScrollView>
+            </View>
         </View>
     );
 };
@@ -131,9 +181,9 @@ const styles = StyleSheet.create({
         marginBottom: 24, // Reduced from 32
     },
     scrollContent: {
-        paddingHorizontal: 22,
+        paddingHorizontal: 20,
         gap: 12, // Reduced from 16
-        paddingBottom: 8,
+        paddingBottom: 4,
     },
     cardContainer: {
         width: 140, // Reduced from 170

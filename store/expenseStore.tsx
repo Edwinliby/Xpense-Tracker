@@ -1,30 +1,18 @@
 import { useAuth } from '@/context/AuthContext';
 import { fetchExchangeRate } from '@/lib/currency';
-import { fromSupabaseAchievement, fromSupabaseCategory, fromSupabaseTransaction, supabase, toSupabaseAchievement, toSupabaseCategory, toSupabaseTransaction } from '@/lib/supabase';
+import { fromSupabaseAchievement, fromSupabaseCategory, fromSupabaseSavingsGoal, fromSupabaseTransaction, supabase, toSupabaseAchievement, toSupabaseCategory, toSupabaseSavingsGoal, toSupabaseTransaction } from '@/lib/supabase';
 import { Achievement, ACHIEVEMENTS } from '@/types/achievements';
-import { Category, Transaction, TransactionType } from '@/types/expense';
+import { Category, SavingsGoal, Transaction, TransactionType } from '@/types/expense';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { addMonths, endOfMonth } from 'date-fns';
 import _ from 'lodash';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
 
-export interface SavingsGoal {
-    id: string;
-    name: string;
-    targetAmount: number;
-    currentAmount: number;
-    color: string;
-    icon: string;
-    deadline?: string;
-    isCompleted: boolean;
-    priority: number; // Lower number = Higher priority
-    year: number; // The year this goal belongs to
-    startMonth: number; // 0-11 (Jan-Dec)
-}
+
 
 import * as Crypto from 'expo-crypto';
 
@@ -50,7 +38,7 @@ interface ExpenseContextType {
     setBudget: (amount: number) => void;
     setIncome: (amount: number) => void;
     setIncomeStartDate: (date: string | null) => void;
-    purgeData: () => Promise<void>;
+    purgeData: (deleteAccount?: boolean) => Promise<void>;
     loading: boolean;
     currency: string;
     setCurrency: (currency: string) => Promise<void>;
@@ -72,10 +60,13 @@ interface ExpenseContextType {
     addGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount' | 'isCompleted'>) => void;
     updateGoal: (id: string, updates: Partial<SavingsGoal>) => void;
     deleteGoal: (id: string) => void;
+
+    hasSeenTutorial: boolean;
+    completeTutorial: () => void;
 }
 
 interface SyncAction {
-    type: 'ADD_TRANSACTION' | 'UPDATE_TRANSACTION' | 'DELETE_TRANSACTION' | 'RESTORE_TRANSACTION' | 'PERMANENT_DELETE_TRANSACTION' | 'ADD_CATEGORY' | 'UPDATE_CATEGORY' | 'DELETE_CATEGORY' | 'SET_BUDGET' | 'SET_INCOME' | 'SET_INCOME_START_DATE' | 'SET_CURRENCY' | 'DISMISS_WARNING' | 'UPDATE_ACHIEVEMENTS';
+    type: 'ADD_TRANSACTION' | 'UPDATE_TRANSACTION' | 'DELETE_TRANSACTION' | 'RESTORE_TRANSACTION' | 'PERMANENT_DELETE_TRANSACTION' | 'ADD_CATEGORY' | 'UPDATE_CATEGORY' | 'DELETE_CATEGORY' | 'SET_BUDGET' | 'SET_INCOME' | 'SET_INCOME_START_DATE' | 'SET_CURRENCY' | 'DISMISS_WARNING' | 'UPDATE_ACHIEVEMENTS' | 'ADD_GOAL' | 'UPDATE_GOAL' | 'DELETE_GOAL';
     payload: any;
     id: string; // Unique ID for the action
     timestamp: number;
@@ -127,6 +118,12 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [isOffline, setIsOffline] = useState(false);
     const [syncQueue, setSyncQueue] = useState<SyncAction[]>([]);
     const [goals, setGoals] = useState<SavingsGoal[]>([]);
+    const [hasSeenTutorial, setHasSeenTutorial] = useState(false);
+
+    const completeTutorial = useCallback(() => {
+        setHasSeenTutorial(true);
+        saveData('hasSeenTutorial', true);
+    }, []);
 
     // --- Auto-Funding Logic ---
     const calculateMonthlyBreakdown = useCallback((targetYear: number, carryOver: number = 0) => {
@@ -416,22 +413,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 
 
-    // Auto‑delete trash items older than 3 minutes
-    const trashRef = useRef(trash);
-    trashRef.current = trash;
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const now = Date.now();
-            const threeMinutes = 3 * 60 * 1000;
-            const toDelete = trashRef.current.filter(t => t.deletedAt && now - new Date(t.deletedAt).getTime() > threeMinutes);
-            if (toDelete.length) {
-                const newTrash = trashRef.current.filter(t => !toDelete.includes(t));
-                setTrash(newTrash);
-                saveData('trash', newTrash);
-            }
-        }, 10000);
-        return () => clearInterval(interval);
-    }, []);
+
 
 
 
@@ -510,6 +492,15 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         ({ error } = await supabase.from('user_settings').upsert({ key: 'dismissedWarnings', value: JSON.stringify(action.payload), user_id: user.id }));
                         break;
                     case 'UPDATE_ACHIEVEMENTS':
+                        break;
+                    case 'ADD_GOAL':
+                        ({ error } = await supabase.from('savings_goals').insert({ ...toSupabaseSavingsGoal(action.payload), user_id: user.id }));
+                        break;
+                    case 'UPDATE_GOAL':
+                        ({ error } = await supabase.from('savings_goals').update({ ...toSupabaseSavingsGoal(action.payload), user_id: user.id }).eq('id', action.payload.id));
+                        break;
+                    case 'DELETE_GOAL':
+                        ({ error } = await supabase.from('savings_goals').delete().eq('id', action.payload).eq('user_id', user.id));
                         break;
                 }
             } catch (e: any) {
@@ -853,6 +844,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             const storedDismissedWarnings = await AsyncStorage.getItem('dismissedWarnings');
             const storedQueue = await AsyncStorage.getItem('syncQueue');
+            const storedTutorial = await AsyncStorage.getItem('hasSeenTutorial');
 
             let currentQueue: SyncAction[] = [];
             if (storedQueue) {
@@ -868,7 +860,20 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 // Process recurring transactions from local storage too
                 processRecurringTransactions(active);
             }
-            if (storedTrash) setTrash(JSON.parse(storedTrash));
+            if (storedTrash) {
+                let localTrash = JSON.parse(storedTrash);
+                const now = new Date();
+                const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+                const validTrash = localTrash.filter((t: Transaction) => {
+                    if (!t.deletedAt) return false;
+                    return (now.getTime() - new Date(t.deletedAt).getTime()) < thirtyDaysMs;
+                });
+
+                setTrash(validTrash);
+                if (validTrash.length < localTrash.length) {
+                    saveData('trash', validTrash);
+                }
+            }
             if (storedCategories) setCategories(JSON.parse(storedCategories));
             if (storedBudget) setBudgetState(parseFloat(storedBudget));
             if (storedIncome) setIncomeState(parseFloat(storedIncome));
@@ -876,7 +881,19 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (storedCurrency) setCurrencyState(storedCurrency);
             if (storedAchievements) setAchievements(JSON.parse(storedAchievements));
             if (storedGoals) setGoals(JSON.parse(storedGoals));
+            if (storedGoals) setGoals(JSON.parse(storedGoals));
             if (storedDismissedWarnings) setDismissedWarnings(JSON.parse(storedDismissedWarnings));
+            if (storedTutorial) {
+                setHasSeenTutorial(JSON.parse(storedTutorial));
+            } else {
+                // Check if user is "existing" (has transactions or custom categories)
+                // If so, mark tutorial as seen so they don't get annoyed
+                const hasData = (storedTransactions && JSON.parse(storedTransactions).length > 0);
+                if (hasData) {
+                    setHasSeenTutorial(true);
+                    saveData('hasSeenTutorial', true);
+                }
+            }
 
             if (user) {
                 // Sync with Supabase
@@ -884,7 +901,23 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 if (remoteTransactions && !txError) {
                     const parsed = remoteTransactions.map(fromSupabaseTransaction);
                     let active = parsed.filter(t => !t.deletedAt);
-                    const trashed = parsed.filter(t => t.deletedAt);
+                    let trashed = parsed.filter(t => t.deletedAt);
+
+                    // Auto-delete remote trash older than 30 days
+                    const now = new Date();
+                    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+                    const expiredTrashIds = trashed.filter(t => {
+                        return t.deletedAt && (now.getTime() - new Date(t.deletedAt).getTime()) >= thirtyDaysMs;
+                    }).map(t => t.id);
+
+                    if (expiredTrashIds.length > 0) {
+                        // We don't await this to avoid blocking the UI load
+                        supabase.from('transactions').delete().in('id', expiredTrashIds).eq('user_id', user.id).then(({ error }) => {
+                            if (error) console.error('Failed to auto-delete expired trash', error);
+                        });
+                        // Filter them out from local state immediately
+                        trashed = trashed.filter(t => !expiredTrashIds.includes(t.id));
+                    }
 
                     // Merge pending transactions from queue (Optimistic UI)
                     // This prevents items from disappearing if they exist locally but haven't synced yet
@@ -994,6 +1027,52 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         saveData('achievements', merged);
                         return merged;
                     });
+                }
+
+                const { data: remoteGoals, error: goalError } = await supabase.from('savings_goals').select('*').eq('user_id', user.id);
+                if (remoteGoals && !goalError) {
+                    const parsedGoals = remoteGoals.map(fromSupabaseSavingsGoal);
+                    // Merge logic: remote overrides local if ID matches? Or simple replace?
+                    // Goals are modified by 'distributeFundsToGoals' LOCALLY often (currentAmount).
+                    // BUT structural changes (name, target) come from user.
+                    // 'currentAmount' is a derived value from local calculation mostly, but if we sync it?
+                    // Actually, 'currentAmount' should probably be re-calculated locally based on rules.
+                    // However, we sync it so 'other' devices see it.
+                    // Let's assume Remote acts as source of truth for definitions.
+
+                    // We need to be careful not to overwrite a just-created goal that hasn't synced yet.
+                    // But queue logic handles pending adds.
+
+                    // Let's merge:
+                    // If local has a goal not in remote -> keep if in queue?
+                    // Actually simple replacement + queue handling (like transactions) is best.
+
+                    // For goals, let's trust remote if present.
+                    // And append pending creations.
+
+                    let activeGoals = parsedGoals;
+
+                    if (currentQueue.length > 0) {
+                        const pendingGoalAdds = currentQueue.filter(a => a.type === 'ADD_GOAL').map(a => a.payload as SavingsGoal);
+                        const uniquePending = pendingGoalAdds.filter(p => !activeGoals.some(r => r.id === p.id));
+                        activeGoals = [...activeGoals, ...uniquePending];
+
+                        const pendingGoalUpdates = currentQueue.filter(a => a.type === 'UPDATE_GOAL').map(a => a.payload as SavingsGoal);
+                        if (pendingGoalUpdates.length > 0) {
+                            activeGoals = activeGoals.map(g => {
+                                const update = pendingGoalUpdates.find(u => u.id === g.id);
+                                return update ? { ...g, ...update } : g;
+                            });
+                        }
+
+                        const pendingGoalDeletes = currentQueue.filter(a => a.type === 'DELETE_GOAL').map(a => a.payload as string);
+                        if (pendingGoalDeletes.length > 0) {
+                            activeGoals = activeGoals.filter(g => !pendingGoalDeletes.includes(g.id));
+                        }
+                    }
+
+                    setGoals(activeGoals);
+                    saveData('goals', activeGoals);
                 }
             }
         } catch (e) {
@@ -1298,7 +1377,19 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         setGoals(updatedGoals);
         saveData('goals', updatedGoals);
-    }, [goals]);
+        if (user) {
+            if (isOffline) {
+                addToQueue({ type: 'ADD_GOAL', payload: newGoal });
+            } else {
+                supabase.from('savings_goals').insert({ ...toSupabaseSavingsGoal(newGoal), user_id: user.id }).then(({ error }) => {
+                    if (error) {
+                        console.error('Supabase add goal error', error);
+                        addToQueue({ type: 'ADD_GOAL', payload: newGoal });
+                    }
+                });
+            }
+        }
+    }, [goals, user, isOffline, addToQueue]);
 
     const updateGoal = useCallback((id: string, updates: Partial<SavingsGoal>) => {
         setGoals(prev => {
@@ -1306,7 +1397,31 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             saveData('goals', updated);
             return updated;
         });
-    }, []);
+
+
+        const updatedGoal = goals.find(g => g.id === id); // Old state? No, we need new state.
+        // Actually, state updates are async in React batching but `updated` in callback is correct.
+        // We can't easily access the *result* of the setGoals callback outside. 
+        // Let's reconstruct or grab from the functional update?
+
+        // Better: Compute updated list first.
+        const goalToUpdate = goals.find(g => g.id === id);
+        if (goalToUpdate) {
+            const finalGoal = { ...goalToUpdate, ...updates };
+            if (user) {
+                if (isOffline) {
+                    addToQueue({ type: 'UPDATE_GOAL', payload: finalGoal });
+                } else {
+                    supabase.from('savings_goals').update({ ...toSupabaseSavingsGoal(finalGoal), user_id: user.id }).eq('id', id).then(({ error }) => {
+                        if (error) {
+                            console.error('Supabase update goal error', error);
+                            addToQueue({ type: 'UPDATE_GOAL', payload: finalGoal });
+                        }
+                    });
+                }
+            }
+        }
+    }, [goals, user, isOffline, addToQueue]);
 
     const deleteGoal = useCallback((id: string) => {
         setGoals(prev => {
@@ -1314,7 +1429,22 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             saveData('goals', updated);
             return updated;
         });
-    }, []);
+
+        if (user) {
+            if (isOffline) {
+                addToQueue({ type: 'DELETE_GOAL', payload: id });
+            } else {
+                supabase.from('savings_goals').delete().eq('id', id).eq('user_id', user.id).then(({ error }) => {
+                    if (error) {
+                        console.error('Supabase delete goal error', error);
+                        addToQueue({ type: 'DELETE_GOAL', payload: id });
+                    }
+                });
+            }
+        }
+    }, [user, isOffline, addToQueue]);
+
+
 
 
     const updateCategory = useCallback(async (id: string, updates: Partial<Omit<Category, 'id'>>) => {
@@ -1542,7 +1672,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setNewlyUnlockedAchievement(null);
     }, []);
 
-    const purgeData = useCallback(async () => {
+    const purgeData = useCallback(async (deleteAccount: boolean = false) => {
         setLoading(true);
         try {
             // 1. Clear Local State
@@ -1558,18 +1688,41 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             await AsyncStorage.multiRemove([
                 'transactions', 'trash', 'categories', 'budget', 'income',
                 'incomeStartDate', 'currency', 'achievements', 'goals',
-                'dismissedWarnings', 'syncQueue'
+                'dismissedWarnings', 'syncQueue', 'hasSeenTutorial'
             ]);
 
             // 3. Clear Supabase (if online)
             if (user && !isOffline) {
-                await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-                await supabase.from('categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-                await supabase.from('user_settings').delete().neq('user_id', '00000000-0000-0000-0000-000000000000'); // Delete all matching user
+                if (deleteAccount) {
+                    // Call RPC to self-delete user (cascades to all data)
+                    const { error } = await supabase.rpc('delete_user_account');
+                    if (error) {
+                        console.error('RPC delete user failed', error);
+                        // Fallback: Delete data manually if RPC fails (though Auth remains)
+                        await Promise.all([
+                            supabase.from('transactions').delete().eq('user_id', user.id),
+                            supabase.from('categories').delete().eq('user_id', user.id),
+                            supabase.from('savings_goals').delete().eq('user_id', user.id),
+                            supabase.from('achievements').delete().eq('user_id', user.id),
+                            supabase.from('user_settings').delete().eq('user_id', user.id)
+                        ]);
+                        throw error;
+                    }
+                } else {
+                    // Just reset data, keep account
+                    await Promise.all([
+                        supabase.from('transactions').delete().eq('user_id', user.id),
+                        supabase.from('categories').delete().eq('user_id', user.id),
+                        supabase.from('savings_goals').delete().eq('user_id', user.id),
+                        supabase.from('achievements').delete().eq('user_id', user.id),
+                        supabase.from('user_settings').delete().eq('user_id', user.id)
+                    ]);
+                }
             }
         } catch (e) {
             console.error('Purge failed', e);
             Alert.alert('Error', 'Failed to reset data');
+            throw e; // Re-throw so caller knows
         } finally {
             setLoading(false);
         }
@@ -1618,6 +1771,8 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 addGoal,
                 updateGoal,
                 deleteGoal,
+                hasSeenTutorial,
+                completeTutorial,
             }}
         >
             {children}

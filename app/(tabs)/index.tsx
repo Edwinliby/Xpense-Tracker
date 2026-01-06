@@ -3,6 +3,7 @@ import { BudgetWidget } from '@/components/BudgetWidget';
 import { DebtCreditCard } from '@/components/DebtCreditCard';
 import { ExpenseCard } from '@/components/ExpenseCard';
 import { HomeChart } from '@/components/HomeChart';
+import { TutorialOverlay } from '@/components/TutorialOverlay';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
@@ -16,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function DashboardScreen() {
   const Styles = useStyles();
   const Colors = useThemeColor();
-  const { transactions, budget, income, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement } = useExpense();
+  const { transactions, budget, income, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement, hasSeenTutorial, completeTutorial, loading } = useExpense();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -747,6 +748,11 @@ export default function DashboardScreen() {
         </View>
 
       </ScrollView>
+
+      <TutorialOverlay
+        visible={!loading && !hasSeenTutorial}
+        onComplete={completeTutorial}
+      />
 
       <AchievementUnlockModal
         visible={!!newlyUnlockedAchievement}

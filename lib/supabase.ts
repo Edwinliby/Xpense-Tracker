@@ -1,4 +1,4 @@
-import { Category, Transaction } from "@/types/expense";
+import { Category, SavingsGoal, Transaction } from "@/types/expense";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { Platform } from "react-native";
@@ -117,4 +117,44 @@ export const fromSupabaseAchievement = (a: any) => ({
   id: a.id,
   unlockedAt: a.unlocked_at,
   progress: a.progress,
+});
+
+export const toSupabaseSavingsGoal = (g: {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  color: string;
+  icon: string;
+  deadline?: string;
+  isCompleted: boolean;
+  priority: number;
+  year: number;
+  startMonth: number;
+}) => ({
+  id: g.id,
+  name: g.name,
+  target_amount: g.targetAmount,
+  current_amount: g.currentAmount,
+  color: g.color,
+  icon: g.icon,
+  deadline: g.deadline,
+  is_completed: g.isCompleted,
+  priority: g.priority,
+  year: g.year,
+  start_month: g.startMonth,
+});
+
+export const fromSupabaseSavingsGoal = (g: any): SavingsGoal => ({
+  id: g.id,
+  name: g.name,
+  targetAmount: g.target_amount,
+  currentAmount: g.current_amount,
+  color: g.color,
+  icon: g.icon,
+  deadline: g.deadline,
+  isCompleted: g.is_completed,
+  priority: g.priority,
+  year: g.year,
+  startMonth: g.start_month,
 });

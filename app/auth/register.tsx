@@ -1,8 +1,11 @@
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Register() {
     const [email, setEmail] = useState('');
@@ -29,7 +32,6 @@ export default function Register() {
         if (error) {
             Alert.alert('Registration Failed', error.message);
         } else if (!data?.session) {
-            // Only show alert and navigate back if session is not established (email verification required)
             Alert.alert('Success', 'Please check your email to verify your account.', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
@@ -37,86 +39,135 @@ export default function Register() {
     };
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.content}>
-                <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
-                <Text style={[styles.subtitle, { color: colors.text }]}>Sign up to get started</Text>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                <TextInput
-                    style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Email"
-                    placeholderTextColor="#999"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                />
-                <TextInput
-                    style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Password"
-                    placeholderTextColor="#999"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
-                <TextInput
-                    style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Confirm Password"
-                    placeholderTextColor="#999"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                />
+                    {/* Header Section with Logo */}
+                    <View style={styles.header}>
+                        <Image
+                            source={require('../../assets/images/android-icon-foreground.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                        <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+                        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                            Join us and start tracking your expenses
+                        </Text>
+                    </View>
 
-                <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleSignUp} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign Up</Text>}
-                </TouchableOpacity>
-            </View>
-        </KeyboardAvoidingView>
+                    {/* Form Section */}
+                    <View style={styles.form}>
+                        <Input
+                            label="Email Address"
+                            placeholder="hello@example.com"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            icon="Mail"
+                        />
+
+                        <View style={{ height: 16 }} />
+
+                        <Input
+                            label="Password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                            icon="Lock"
+                        />
+
+                        <View style={{ height: 16 }} />
+
+                        <Input
+                            label="Confirm Password"
+                            placeholder="••••••••"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry
+                            icon="Lock"
+                        />
+
+                        <View style={{ marginTop: 32 }}>
+                            <Button
+                                title={loading ? "Creating Account..." : "Sign Up"}
+                                onPress={handleSignUp}
+                                disabled={loading}
+                                size="large"
+                            />
+                        </View>
+                    </View>
+
+                    {/* Footer Section */}
+                    <View style={styles.footer}>
+                        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                            Already have an account?
+                        </Text>
+                        <Link href="/auth/login" asChild>
+                            <TouchableOpacity>
+                                <Text style={[styles.signinLink, { color: colors.primary }]}>Sign In</Text>
+                            </TouchableOpacity>
+                        </Link>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
-        padding: 20,
     },
     content: {
+        flexGrow: 1,
+        paddingHorizontal: 24,
+        paddingBottom: 40,
+        justifyContent: 'center',
         width: '100%',
-        maxWidth: 400,
+        maxWidth: 480,
         alignSelf: 'center',
     },
+    header: {
+        alignItems: 'center',
+        marginBottom: 40,
+        marginTop: 20,
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        marginBottom: 24,
+    },
     title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        marginBottom: 10,
+        fontSize: 28,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 8,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 18,
-        marginBottom: 30,
+        fontSize: 16,
+        fontFamily: 'Geist-Regular',
         textAlign: 'center',
         opacity: 0.8,
     },
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderRadius: 10,
-        paddingHorizontal: 15,
-        marginBottom: 15,
-        fontSize: 16,
+    form: {
+        width: '100%',
     },
-    button: {
-        height: 50,
-        borderRadius: 10,
+    footer: {
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 40,
+        gap: 6,
     },
-    buttonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
+    footerText: {
+        fontSize: 14,
+        fontFamily: 'Geist-Regular',
+    },
+    signinLink: {
+        fontSize: 14,
+        fontFamily: 'Geist-SemiBold',
     },
 });

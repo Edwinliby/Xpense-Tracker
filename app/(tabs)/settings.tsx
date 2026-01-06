@@ -213,6 +213,47 @@ export default function SettingsScreen() {
         );
     };
 
+    const handleDeleteAccount = () => {
+        // Warning 1
+        Alert.alert(
+            'Delete Account',
+            'Are you sure you want to delete your account? This will permanently remove all your data associated with this account.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Continue',
+                    style: 'destructive',
+                    onPress: () => {
+                        // Warning 2
+                        Alert.alert(
+                            'Final Warning',
+                            'This action CANNOT be undone. All your transactions, goals, and history will be lost forever. Are you absolutely sure?',
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                    text: 'Yes, Delete Account',
+                                    style: 'destructive',
+                                    onPress: async () => {
+                                        try {
+                                            // 1. Delete all data AND the account
+                                            await purgeData(true);
+                                            // 2. Sign Out to clear local session
+                                            try { await signOut(); } catch { /* ignore */ }
+                                            router.replace('/auth/login');
+                                        } catch (error) {
+                                            console.error("Error deleting account:", error);
+                                            Alert.alert("Error", "Failed to delete account data. Please try again.");
+                                        }
+                                    }
+                                }
+                            ]
+                        );
+                    }
+                }
+            ]
+        );
+    };
+
     const renderIcon = (iconName: string, color: string, size: number = 20) => {
         const IconComponent = (Icons as any)[iconName];
         if (!IconComponent) return null;
@@ -453,6 +494,23 @@ export default function SettingsScreen() {
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.menuText, { color: Colors.danger }]}>Sign Out</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                    </View>
+                </View>
+
+                {/* Section: Danger Zone */}
+                <View style={[styles.section, { marginTop: 12 }]}>
+                    <Text style={[styles.sectionHeader, { color: Colors.danger }]}>DANGER ZONE</Text>
+                    <View style={[styles.card, { padding: 0, overflow: 'hidden', borderWidth: 1, borderColor: Colors.danger + '20', backgroundColor: Colors.danger + '05' }]}>
+                        <TouchableOpacity style={styles.menuRow} onPress={handleDeleteAccount}>
+                            <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
+                                <Icons.UserX size={18} color={Colors.danger} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.menuText, { color: Colors.danger, fontWeight: 'bold' }]}>Delete Account</Text>
+                                <Text style={styles.menuSubtext}>Permanently delete account and data</Text>
                             </View>
                         </TouchableOpacity>
                     </View>

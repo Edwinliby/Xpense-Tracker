@@ -122,7 +122,7 @@ export default function TrashScreen() {
                 <View style={[styles.warningBanner, { backgroundColor: Colors.surfaceHighlight }]}>
                     <Icons.AlertCircle size={14} color={Colors.textSecondary} />
                     <Text style={[styles.warningText, { color: Colors.textSecondary }]}>
-                        Items are permanently deleted after 3 minutes.
+                        Items are permanently deleted after 30 days.
                     </Text>
                 </View>
             )}

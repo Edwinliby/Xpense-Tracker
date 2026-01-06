@@ -1,7 +1,8 @@
 import AddGoalModal from '@/components/goals/AddGoalModal';
 import GoalCard from '@/components/goals/GoalCard';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { SavingsGoal, useExpense } from '@/store/expenseStore';
+import { useExpense } from '@/store/expenseStore';
+import { SavingsGoal } from '@/types/expense';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';

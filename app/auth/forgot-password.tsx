@@ -1,8 +1,11 @@
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
@@ -30,70 +33,103 @@ export default function ForgotPassword() {
     };
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.content}>
-                <Text style={[styles.title, { color: colors.text }]}>Reset Password</Text>
-                <Text style={[styles.subtitle, { color: colors.text }]}>Enter your email to receive reset instructions</Text>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <View style={styles.content}>
 
-                <TextInput
-                    style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Email"
-                    placeholderTextColor="#999"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                />
+                    {/* Header Section with Logo */}
+                    <View style={styles.header}>
+                        <Image
+                            source={require('../../assets/images/android-icon-foreground.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                        <Text style={[styles.title, { color: colors.text }]}>Reset Password</Text>
+                        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                            Enter your email to receive instructions
+                        </Text>
+                    </View>
 
-                <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleReset} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send Instructions</Text>}
-                </TouchableOpacity>
-            </View>
-        </KeyboardAvoidingView>
+                    {/* Form Section */}
+                    <View style={styles.form}>
+                        <Input
+                            label="Email Address"
+                            placeholder="hello@example.com"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            icon="Mail"
+                        />
+
+                        <View style={{ marginTop: 32 }}>
+                            <Button
+                                title={loading ? "Sending..." : "Send Instructions"}
+                                onPress={handleReset}
+                                disabled={loading}
+                                size="large"
+                            />
+                        </View>
+                    </View>
+
+                    {/* Footer Section */}
+                    <View style={styles.footer}>
+                        <Link href="/auth/login" asChild>
+                            <TouchableOpacity>
+                                <Text style={[styles.backLink, { color: colors.textSecondary }]}>
+                                    ← Back to Sign In
+                                </Text>
+                            </TouchableOpacity>
+                        </Link>
+                    </View>
+                </View>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
-        padding: 20,
     },
     content: {
+        flex: 1,
+        paddingHorizontal: 24,
+        justifyContent: 'center',
         width: '100%',
-        maxWidth: 400,
+        maxWidth: 480,
         alignSelf: 'center',
     },
+    header: {
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        marginBottom: 24,
+    },
     title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        marginBottom: 10,
+        fontSize: 28,
+        fontFamily: 'Geist-Bold',
+        marginBottom: 8,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 18,
-        marginBottom: 30,
+        fontSize: 16,
+        fontFamily: 'Geist-Regular',
         textAlign: 'center',
         opacity: 0.8,
     },
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderRadius: 10,
-        paddingHorizontal: 15,
-        marginBottom: 15,
-        fontSize: 16,
+    form: {
+        width: '100%',
     },
-    button: {
-        height: 50,
-        borderRadius: 10,
-        justifyContent: 'center',
+    footer: {
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 40,
     },
-    buttonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
+    backLink: {
+        fontSize: 14,
+        fontFamily: 'Geist-Medium',
     },
 });

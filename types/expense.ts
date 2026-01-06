@@ -31,3 +31,17 @@ export interface Category {
   color: string;
   isPredefined?: boolean;
 }
+
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  color: string;
+  icon: string;
+  deadline?: string;
+  isCompleted: boolean;
+  priority: number; // Lower number = Higher priority
+  year: number; // The year this goal belongs to
+  startMonth: number; // 0-11 (Jan-Dec)
+}

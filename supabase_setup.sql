@@ -72,11 +72,30 @@ CREATE TABLE IF NOT EXISTS achievements (
     PRIMARY KEY (id, user_id)
 );
 
+-- 5. Savings Goals Table
+CREATE TABLE IF NOT EXISTS savings_goals (
+    id TEXT PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    target_amount NUMERIC NOT NULL,
+    current_amount NUMERIC DEFAULT 0,
+    color TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    deadline TIMESTAMPTZ,
+    is_completed BOOLEAN DEFAULT FALSE,
+    priority INTEGER DEFAULT 0,
+    year INTEGER,
+    start_month INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 5. Enable Row Level Security (RLS)
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.savings_goals ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create RLS Policies
 -- We accept that these might fail if they already exist, but for a clean setup script, we define them.
@@ -134,3 +153,32 @@ CREATE POLICY "Users can update their own achievements" ON achievements FOR UPDA
 
 DROP POLICY IF EXISTS "Users can delete their own achievements" ON achievements;
 CREATE POLICY "Users can delete their own achievements" ON achievements FOR DELETE USING (auth.uid() = user_id);
+
+-- Savings Goals Policies
+DROP POLICY IF EXISTS "Users can view their own savings_goals" ON savings_goals;
+CREATE POLICY "Users can view their own savings_goals" ON savings_goals FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own savings_goals" ON savings_goals;
+CREATE POLICY "Users can insert their own savings_goals" ON savings_goals FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own savings_goals" ON savings_goals;
+CREATE POLICY "Users can update their own savings_goals" ON savings_goals FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own savings_goals" ON savings_goals;
+CREATE POLICY "Users can delete their own savings_goals" ON savings_goals FOR DELETE USING (auth.uid() = user_id);
+
+-- Function to allow users to delete their own account
+-- This function must be run in the Supabase SQL Editor
+
+create or replace function delete_user_account()
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  -- Delete the user from auth.users
+  -- This will trigger CASCADE deletes for public tables linked by foreign keys (transactions, etc.),
+  -- effectively purging all their data automatically.
+  delete from auth.users where id = auth.uid();
+end;
+$$;

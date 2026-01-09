@@ -2,8 +2,9 @@ import { Button } from '@/components/Button';
 import { ColorPicker } from '@/components/ColorPicker';
 import { IconPicker } from '@/components/IconPicker';
 import { Input } from '@/components/Input';
-import { WebDatePicker } from '@/components/WebDatePicker';
+import { SectionHeader, Separator, SettingsCard, SettingsHeroCard, SettingsItem } from '@/components/SettingsComponents';
 import { useStyles } from '@/constants/Styles';
+import { useAlert } from '@/context/AlertContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -14,9 +15,9 @@ import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { debounce } from 'lodash';
 import * as Icons from 'lucide-react-native';
-import { Calendar, Download, Monitor, Moon, Sun, Trash2, X } from 'lucide-react-native';
+import { Calendar, Monitor, Moon, Sun, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -29,6 +30,8 @@ export default function SettingsScreen() {
         incomeStartDate,
         setBudget,
         setIncome,
+        incomeDuration,
+        setIncomeDuration,
         setIncomeStartDate,
         currency,
         setCurrency,
@@ -37,12 +40,13 @@ export default function SettingsScreen() {
         addCategory,
         deleteCategory,
         transactions,
-        loading,
+        trash,
         purgeData,
     } = useExpense();
 
     const [budgetInput, setBudgetInput] = useState('');
     const [incomeInput, setIncomeInput] = useState('');
+    const [incomeDurationInput, setIncomeDurationInput] = useState('');
     const [, setIsSaving] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showAddCategory, setShowAddCategory] = useState(false);
@@ -51,13 +55,13 @@ export default function SettingsScreen() {
     const [selectedColor, setSelectedColor] = useState('#FFD93D');
     const [showIconPicker, setShowIconPicker] = useState(false);
     const [showColorPicker, setShowColorPicker] = useState(false);
-
-
+    const { showAlert } = useAlert();
 
     useEffect(() => {
         setBudgetInput(budget.toString());
         setIncomeInput(income.toString());
-    }, [budget, income]);
+        setIncomeDurationInput(incomeDuration.toString());
+    }, [budget, income, incomeDuration]);
 
     const debouncedSaveBudget = React.useMemo(
         () => debounce((value: string) => {
@@ -65,7 +69,6 @@ export default function SettingsScreen() {
             if (!isNaN(parsed)) {
                 setIsSaving(true);
                 setBudget(parsed);
-                // Simulate a quick save indication or just rely on the fact it's saved
                 setTimeout(() => setIsSaving(false), 500);
             }
         }, 1000),
@@ -84,6 +87,18 @@ export default function SettingsScreen() {
         [setIncome]
     );
 
+    const debouncedSaveIncomeDuration = React.useMemo(
+        () => debounce((value: string) => {
+            const parsed = value.trim() === '' ? 12 : parseInt(value);
+            if (!isNaN(parsed)) {
+                setIsSaving(true);
+                setIncomeDuration(parsed);
+                setTimeout(() => setIsSaving(false), 500);
+            }
+        }, 1000),
+        [setIncomeDuration]
+    );
+
     const handleBudgetChange = (text: string) => {
         setBudgetInput(text);
         debouncedSaveBudget(text);
@@ -92,6 +107,11 @@ export default function SettingsScreen() {
     const handleIncomeChange = (text: string) => {
         setIncomeInput(text);
         debouncedSaveIncome(text);
+    };
+
+    const handleIncomeDurationChange = (text: string) => {
+        setIncomeDurationInput(text);
+        debouncedSaveIncomeDuration(text);
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
@@ -105,7 +125,7 @@ export default function SettingsScreen() {
 
     const handleAddCategory = () => {
         if (!newCategoryName.trim()) {
-            Alert.alert('Error', 'Please enter a category name');
+            showAlert('Error', 'Please enter a category name');
             return;
         }
         addCategory(newCategoryName.trim(), selectedIcon, selectedColor);
@@ -113,39 +133,27 @@ export default function SettingsScreen() {
         setSelectedIcon('MoreHorizontal');
         setSelectedColor('#FFD93D');
         setShowAddCategory(false);
-        Alert.alert('Success', 'Category added successfully');
+        showAlert('Success', 'Category added successfully');
     };
 
     const handleDeleteCategory = (categoryId: string, categoryName: string) => {
         const category = categories.find(c => c.id === categoryId);
         if (category?.isPredefined) {
-            Alert.alert(
-                'Cannot Delete',
-                'Predefined categories cannot be deleted.',
-                [{ text: 'OK' }]
-            );
+            showAlert('Cannot Delete', 'Predefined categories cannot be deleted.', [{ text: 'OK' }]);
             return;
         }
 
         const hasTransactions = transactions.some(t => t.category === categoryName);
         if (hasTransactions) {
-            Alert.alert(
-                'Cannot Delete',
-                `The category "${categoryName}" has associated transactions. Please delete or reassign those transactions first.`,
-                [{ text: 'OK' }]
-            );
+            showAlert('Cannot Delete', `The category "${categoryName}" has associated transactions. Please delete or reassign them first.`, [{ text: 'OK' }]);
             return;
         }
-        Alert.alert(
+        showAlert(
             'Delete Category',
             `Are you sure you want to delete "${categoryName}"?`,
             [
                 { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => deleteCategory(categoryId)
-                }
+                { text: 'Delete', style: 'destructive', onPress: () => deleteCategory(categoryId) }
             ]
         );
     };
@@ -154,49 +162,41 @@ export default function SettingsScreen() {
         try {
             const csvHeader = 'Date,Type,Category,Amount,Description,Paid By,Friend Payment\n';
             const csvRows = transactions.map(t => {
-                const cleanDesc = t.description.replace(/,/g, ' '); // Simple escape
+                const cleanDesc = t.description.replace(/,/g, ' ');
                 return `${t.date},${t.type},${t.category},${t.amount},${cleanDesc},${t.paidBy || ''},${t.isFriendPayment ? 'Yes' : 'No'}`;
             }).join('\n');
 
             const csvContent = csvHeader + csvRows;
             const fileUri = (FileSystem as any).documentDirectory + 'transactions.csv';
 
-            await FileSystem.writeAsStringAsync(fileUri, csvContent, {
-                encoding: 'utf8',
-            });
+            await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: 'utf8' });
 
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(fileUri);
             } else {
-                Alert.alert('Error', 'Sharing is not available on this device');
+                showAlert('Error', 'Sharing is not available on this device');
             }
         } catch (error) {
             console.error('Export failed:', error);
-            Alert.alert('Error', 'Failed to export data');
+            showAlert('Error', 'Failed to export data');
         }
     };
 
     const { signOut } = useAuth();
 
     const handleSignOut = () => {
-        Alert.alert(
+        showAlert(
             'Sign Out',
             'Are you sure you want to sign out?',
             [
                 { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Sign Out',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await signOut();
-                    }
-                }
+                { text: 'Sign Out', style: 'destructive', onPress: async () => { await signOut(); } }
             ]
         );
     };
 
     const handleResetData = () => {
-        Alert.alert(
+        showAlert(
             'Reset App Data',
             'This will permanently delete ALL transactions, categories, and settings. This action cannot be undone.',
             [
@@ -206,7 +206,7 @@ export default function SettingsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         await purgeData();
-                        Alert.alert('Success', 'App data has been reset.');
+                        showAlert('Success', 'App data has been reset.');
                     }
                 }
             ]
@@ -214,8 +214,7 @@ export default function SettingsScreen() {
     };
 
     const handleDeleteAccount = () => {
-        // Warning 1
-        Alert.alert(
+        showAlert(
             'Delete Account',
             'Are you sure you want to delete your account? This will permanently remove all your data associated with this account.',
             [
@@ -224,30 +223,30 @@ export default function SettingsScreen() {
                     text: 'Continue',
                     style: 'destructive',
                     onPress: () => {
-                        // Warning 2
-                        Alert.alert(
-                            'Final Warning',
-                            'This action CANNOT be undone. All your transactions, goals, and history will be lost forever. Are you absolutely sure?',
-                            [
-                                { text: 'Cancel', style: 'cancel' },
-                                {
-                                    text: 'Yes, Delete Account',
-                                    style: 'destructive',
-                                    onPress: async () => {
-                                        try {
-                                            // 1. Delete all data AND the account
-                                            await purgeData(true);
-                                            // 2. Sign Out to clear local session
-                                            try { await signOut(); } catch { /* ignore */ }
-                                            router.replace('/auth/login');
-                                        } catch (error) {
-                                            console.error("Error deleting account:", error);
-                                            Alert.alert("Error", "Failed to delete account data. Please try again.");
+                        // Small delay to allow previous alert to close before showing the next one
+                        setTimeout(() => {
+                            showAlert(
+                                'Final Warning',
+                                'This action CANNOT be undone. All your transactions, goals, and history will be lost forever. Are you absolutely sure?',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Yes, Delete Account',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                            try {
+                                                await purgeData(true);
+                                                try { await signOut(); } catch { /* ignore */ }
+                                                router.replace('/auth/login');
+                                            } catch (error) {
+                                                console.error("Error deleting account:", error);
+                                                showAlert("Error", "Failed to delete account data. Please try again.");
+                                            }
                                         }
                                     }
-                                }
-                            ]
-                        );
+                                ]
+                            );
+                        }, 500);
                     }
                 }
             ]
@@ -263,310 +262,298 @@ export default function SettingsScreen() {
     return (
         <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
             <View style={styles.header}>
-                <Text style={[Styles.title, { marginBottom: 4, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Settings</Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 13, marginBottom: 16 }}>Manage your preferences and data</Text>
+                <Text style={[Styles.title, { marginBottom: 4, fontFamily: 'Geist-Bold', fontSize: 32, letterSpacing: -0.5 }]}>Settings</Text>
+                <Text style={{ color: Colors.textSecondary, fontSize: 15, fontFamily: 'Geist-Medium' }}>Preferences & Data</Text>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
 
-                {/* Section: Profile & Preferences */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionHeader}>PREFERENCES</Text>
-
-                    {/* Theme Selector */}
-                    <View style={styles.card}>
-                        <View style={styles.rowItem}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.itemTitle, { color: Colors.text }]}>App Theme</Text>
-                                <Text style={[styles.itemSubtitle, { color: Colors.textSecondary }]}>Select your preferred look</Text>
+                {/* Section: Financial Profile (HERO) */}
+                <SectionHeader title="Financial Profile" />
+                <SettingsHeroCard>
+                    <View style={{ gap: 24 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Income</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={{ color: '#fff', fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <Input
+                                            value={incomeInput}
+                                            onChangeText={handleIncomeChange}
+                                            keyboardType="numeric"
+                                            placeholder="0"
+                                            containerStyle={{ marginBottom: 0 }}
+                                            style={{
+                                                backgroundColor: 'rgba(255,255,255,0.15)',
+                                                borderWidth: 0,
+                                                height: 44,
+                                                width: '100%',
+                                                padding: 0,
+                                                paddingHorizontal: 12,
+                                            }}
+                                            inputStyle={{
+                                                color: '#fff',
+                                                fontSize: 24,
+                                                fontFamily: 'Geist-Bold',
+                                                paddingVertical: 0,
+                                                height: '100%',
+                                            }}
+                                            placeholderTextColor="rgba(255,255,255,0.4)"
+                                        />
+                                    </View>
+                                </View>
                             </View>
-                            <View style={styles.themeToggleContainer}>
-                                {['light', 'dark', 'system'].map((t) => {
+                            <View style={{ height: 40, width: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Budget</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={{ color: '#fff', fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <Input
+                                            value={budgetInput}
+                                            onChangeText={handleBudgetChange}
+                                            keyboardType="numeric"
+                                            placeholder="0"
+                                            containerStyle={{ marginBottom: 0 }}
+                                            style={{
+                                                backgroundColor: 'rgba(255,255,255,0.15)',
+                                                borderWidth: 0,
+                                                height: 44,
+                                                width: '100%',
+                                                padding: 0,
+                                                paddingHorizontal: 12,
+                                            }}
+                                            inputStyle={{
+                                                color: '#fff',
+                                                fontSize: 24,
+                                                fontFamily: 'Geist-Bold',
+                                                paddingVertical: 0,
+                                                height: '100%',
+                                            }}
+                                            placeholderTextColor="rgba(255,255,255,0.4)"
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Income Duration</Text>
+                                <Input
+                                    value={incomeDurationInput}
+                                    onChangeText={handleIncomeDurationChange}
+                                    keyboardType="numeric"
+                                    placeholder="12"
+                                    containerStyle={{ marginBottom: 0 }}
+                                    style={{
+                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                        borderWidth: 0,
+                                        height: 36
+                                    }}
+                                    inputStyle={{
+                                        color: '#fff',
+                                        fontSize: 14,
+                                        paddingVertical: 0,
+                                        height: '100%',
+                                    }}
+                                    placeholderTextColor="rgba(255,255,255,0.4)"
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Start Date</Text>
+                                <TouchableOpacity
+                                    onPress={() => Platform.OS !== 'web' && setShowDatePicker(true)}
+                                    style={{
+                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                        height: 36,
+                                        borderRadius: 8,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingHorizontal: 12,
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Geist-Medium' }}>
+                                        {incomeStartDate || 'Select'}
+                                    </Text>
+                                    <Calendar size={14} color="rgba(255,255,255,0.6)" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </SettingsHeroCard>
+
+                {/* Section: Preferences */}
+                <SectionHeader title="Preferences" />
+                <SettingsCard noPadding>
+                    <SettingsItem
+                        icon="Palette"
+                        title="Theme"
+                        rightElement={
+                            <View style={{ flexDirection: 'row', backgroundColor: Colors.surfaceHighlight, padding: 4, borderRadius: 12, gap: 4 }}>
+                                {(['light', 'dark', 'system'] as const).map((t) => {
                                     const isActive = theme === t;
                                     const Icon = t === 'light' ? Sun : t === 'dark' ? Moon : Monitor;
                                     return (
                                         <TouchableOpacity
                                             key={t}
-                                            style={[styles.themeOption, isActive && { backgroundColor: Colors.surfaceHighlight, borderColor: Colors.border }]}
-                                            onPress={() => setTheme(t as any)}
+                                            style={{
+                                                padding: 8,
+                                                borderRadius: 8,
+                                                backgroundColor: isActive ? Colors.background : 'transparent',
+                                                shadowColor: '#000',
+                                                shadowOpacity: isActive ? 0.05 : 0,
+                                                shadowRadius: 2,
+                                            }}
+                                            onPress={() => setTheme(t)}
                                         >
-                                            <Icon size={18} color={isActive ? Colors.text : Colors.textSecondary} />
+                                            <Icon size={16} color={isActive ? Colors.text : Colors.textSecondary} />
                                         </TouchableOpacity>
                                     )
                                 })}
                             </View>
-                        </View>
-
-                        <View style={styles.separator} />
-
-                        {/* Currency Selector */}
-                        <View style={styles.rowItem}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.itemTitle, { color: Colors.text }]}>Currency</Text>
-                                <Text style={[styles.itemSubtitle, { color: Colors.textSecondary }]}>Symbol used across the app</Text>
-                            </View>
-                            {loading ? (
-                                <ActivityIndicator size="small" color={Colors.primary} />
-                            ) : (
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ maxWidth: '50%' }}>
-                                    {['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'INR'].map((curr) => (
-                                        <TouchableOpacity
-                                            key={curr}
-                                            onPress={() => setCurrency(curr)}
-                                            style={[
-                                                styles.currencyOption,
-                                                {
-                                                    backgroundColor: currency === curr ? Colors.primary : 'transparent',
-                                                    borderColor: currency === curr ? Colors.primary : Colors.border
-                                                }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                styles.currencyOptionText,
-                                                { color: currency === curr ? '#fff' : Colors.textSecondary }
-                                            ]}>{curr}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            )}
-                        </View>
-                    </View>
-                </View>
-
-                {/* Section: Financials */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionHeader}>FINANCIAL GOALS</Text>
-                    <View style={styles.card}>
-                        {/* Income & Budget Inputs */}
-                        <View style={{ flexDirection: 'row', gap: 16 }}>
-                            <View style={{ flex: 1 }}>
-                                <Input
-                                    label="Monthly Income"
-                                    placeholder="0.00"
-                                    keyboardType="numeric"
-                                    value={incomeInput}
-                                    onChangeText={handleIncomeChange}
-                                    prefix={currencySymbol}
-                                    style={{ backgroundColor: Colors.background }}
-                                />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Input
-                                    label="Monthly Budget"
-                                    placeholder="0.00"
-                                    keyboardType="numeric"
-                                    value={budgetInput}
-                                    onChangeText={handleBudgetChange}
-                                    prefix={currencySymbol}
-                                    style={{ backgroundColor: Colors.background }}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={{ height: 16 }} />
-
-                        {/* Income Start Date Picker */}
-                        <View style={[styles.pickerContainer, { backgroundColor: Colors.background, borderColor: Colors.border }]}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.itemTitle, { color: Colors.text, fontSize: 13, marginBottom: 4 }]}>Tracking Start Date</Text>
-                                {Platform.OS === 'web' ? (
-                                    <WebDatePicker
-                                        value={(() => {
-                                            if (!incomeStartDate) return new Date();
-                                            const d = new Date(incomeStartDate + '-01');
-                                            return isNaN(d.getTime()) ? new Date() : d;
-                                        })()}
-                                        onChange={(date: Date) => {
-                                            const year = date.getFullYear();
-                                            const month = String(date.getMonth() + 1).padStart(2, '0');
-                                            setIncomeStartDate(`${year}-${month}`);
+                        }
+                    />
+                    <Separator />
+                    <SettingsItem
+                        icon="CircleDollarSign"
+                        title="Currency"
+                        rightElement={
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 4, gap: 6 }} style={{ maxWidth: 160 }}>
+                                {['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'INR'].map((curr) => (
+                                    <TouchableOpacity
+                                        key={curr}
+                                        onPress={() => setCurrency(curr)}
+                                        style={{
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 6,
+                                            borderRadius: 8,
+                                            backgroundColor: currency === curr ? Colors.primary + '20' : Colors.surfaceHighlight,
+                                            borderWidth: 1,
+                                            borderColor: currency === curr ? Colors.primary : 'transparent',
                                         }}
-                                    />
-                                ) : (
-                                    <Text style={{ color: incomeStartDate ? Colors.text : Colors.textSecondary, fontSize: 15, fontWeight: '500' }}>
-                                        {incomeStartDate || "Not set (Select Date)"}
-                                    </Text>
-                                )}
-                            </View>
-                            {Platform.OS !== 'web' && (
-                                <TouchableOpacity
-                                    onPress={() => setShowDatePicker(true)}
-                                    style={{ padding: 8, backgroundColor: Colors.surfaceHighlight, borderRadius: 8 }}
-                                >
-                                    <Calendar size={20} color={Colors.text} />
-                                </TouchableOpacity>
-                            )}
-                            {incomeStartDate && (
-                                <TouchableOpacity onPress={() => setIncomeStartDate(null)} style={{ marginLeft: 8, padding: 4 }}>
-                                    <X size={16} color={Colors.textSecondary} />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-
-                        {Platform.OS !== 'web' && showDatePicker && (
-                            <DateTimePicker
-                                value={incomeStartDate ? new Date(incomeStartDate + '-01') : new Date()}
-                                mode="date"
-                                display="default"
-                                onChange={onDateChange}
-                                themeVariant={theme === 'dark' ? 'dark' : 'light'}
-                            />
-                        )}
-                    </View>
-                </View>
+                                    >
+                                        <Text style={{ fontSize: 13, fontFamily: 'Geist-SemiBold', color: currency === curr ? Colors.primary : Colors.textSecondary }}>{curr}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        }
+                    />
+                </SettingsCard>
 
                 {/* Section: Categories */}
-                <View style={styles.section}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 }}>
-                        <Text style={styles.sectionHeader}>CATEGORIES</Text>
-                        <TouchableOpacity onPress={() => setShowAddCategory(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <Icons.Plus size={14} color={Colors.primary} />
-                            <Text style={{ color: Colors.primary, fontSize: 12, fontWeight: '600' }}>Add New</Text>
-                        </TouchableOpacity>
+                <SectionHeader title="Categories" actionLabel="Add New" onAction={() => setShowAddCategory(true)} />
+                <SettingsCard>
+                    <View style={styles.categoryGrid}>
+                        {categories.map((cat) => (
+                            <TouchableOpacity
+                                key={cat.id}
+                                style={[styles.categoryPill, { backgroundColor: cat.color + '15', borderColor: cat.color + '30' }]}
+                                onPress={() => !cat.isPredefined && handleDeleteCategory(cat.id, cat.name)}
+                            >
+                                {renderIcon(cat.icon, cat.color, 16)}
+                                <Text style={[styles.categoryPillText, { color: Colors.text }]}>{cat.name}</Text>
+                                {!cat.isPredefined && (
+                                    <View style={{ backgroundColor: cat.color + '20', borderRadius: 10, padding: 2 }}>
+                                        <X size={10} color={cat.color} />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        ))}
                     </View>
+                </SettingsCard>
 
-                    <View style={styles.card}>
-                        <View style={styles.categoryGrid}>
-                            {categories.map((cat) => (
-                                <View key={cat.id} style={[styles.categoryPill, { backgroundColor: cat.color + '10', borderColor: cat.color + '40' }]}>
-                                    {renderIcon(cat.icon, cat.color, 14)}
-                                    <Text style={[styles.categoryPillText, { color: Colors.text }]}>{cat.name}</Text>
-                                    {!cat.isPredefined && (
-                                        <TouchableOpacity
-                                            onPress={() => handleDeleteCategory(cat.id, cat.name)}
-                                            style={styles.deleteCategoryBtn}
-                                        >
-                                            <X size={12} color={cat.color} />
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                </View>
+                {/* Section: Data & Privacy */}
+                <SectionHeader title="Data & Privacy" />
+                <SettingsCard noPadding>
+                    <SettingsItem
+                        icon="Download"
+                        title="Export Data"
+                        subtitle="CSV Download"
+                        onPress={handleExport}
+                    />
+                    <Separator />
+                    <SettingsItem
+                        icon="Trash2"
+                        title="Trash Bin"
+                        subtitle={`${trash.length} items`}
+                        onPress={() => router.push('/trash')}
+                    />
+                </SettingsCard>
 
-                {/* Section: Data & Danger Zone */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionHeader}>DATA MANAGEMENT</Text>
-                    <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>
-
-                        <TouchableOpacity style={styles.menuRow} onPress={handleExport}>
-                            <View style={[styles.iconBox, { backgroundColor: Colors.surfaceHighlight }]}>
-                                <Download size={18} color={Colors.text} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.menuText, { color: Colors.text }]}>Export Data</Text>
-                                <Text style={styles.menuSubtext}>Download as CSV</Text>
-                            </View>
-                            <Icons.ChevronRight size={18} color={Colors.textSecondary} opacity={0.5} />
-                        </TouchableOpacity>
-
-                        <View style={styles.separator} />
-
-                        <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/trash')}>
-                            <View style={[styles.iconBox, { backgroundColor: Colors.surfaceHighlight }]}>
-                                <Trash2 size={18} color={Colors.text} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.menuText, { color: Colors.text }]}>Trash Bin</Text>
-                                <Text style={styles.menuSubtext}>Restore deleted items</Text>
-                            </View>
-                            <Icons.ChevronRight size={18} color={Colors.textSecondary} opacity={0.5} />
-                        </TouchableOpacity>
-
-                        <View style={styles.separator} />
-
-                        <TouchableOpacity style={styles.menuRow} onPress={handleResetData}>
-                            <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
-                                <Icons.RefreshCw size={18} color={Colors.danger} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.menuText, { color: Colors.danger }]}>Reset App Data</Text>
-                                <Text style={styles.menuSubtext}>Clear all transactions & settings</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <View style={styles.separator} />
-
-                        <TouchableOpacity style={styles.menuRow} onPress={handleSignOut}>
-                            <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
-                                <Icons.LogOut size={18} color={Colors.danger} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.menuText, { color: Colors.danger }]}>Sign Out</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                    </View>
-                </View>
-
-                {/* Section: Danger Zone */}
-                <View style={[styles.section, { marginTop: 12 }]}>
-                    <Text style={[styles.sectionHeader, { color: Colors.danger }]}>DANGER ZONE</Text>
-                    <View style={[styles.card, { padding: 0, overflow: 'hidden', borderWidth: 1, borderColor: Colors.danger + '20', backgroundColor: Colors.danger + '05' }]}>
-                        <TouchableOpacity style={styles.menuRow} onPress={handleDeleteAccount}>
-                            <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
-                                <Icons.UserX size={18} color={Colors.danger} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.menuText, { color: Colors.danger, fontWeight: 'bold' }]}>Delete Account</Text>
-                                <Text style={styles.menuSubtext}>Permanently delete account and data</Text>
-                            </View>
-                        </TouchableOpacity>
-                    </View>
+                <View style={{ marginTop: 24, gap: 12 }}>
+                    <Button
+                        title="Sign Out"
+                        onPress={handleSignOut}
+                        variant="secondary"
+                        icon={<Icons.LogOut size={16} color={Colors.text} />}
+                        style={{ backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }}
+                    />
+                    <Button
+                        title="Reset Data"
+                        onPress={handleResetData}
+                        variant="secondary"
+                        style={{ backgroundColor: Colors.danger + '10', borderColor: Colors.danger + '20', borderWidth: 1 }}
+                        textStyle={{ color: Colors.danger }}
+                    />
+                    <Button
+                        title="Delete Account"
+                        onPress={handleDeleteAccount}
+                        variant="secondary"
+                        style={{ backgroundColor: Colors.danger + '10', borderColor: Colors.danger + '20', borderWidth: 1 }}
+                        textStyle={{ color: Colors.danger }}
+                    />
                 </View>
 
             </ScrollView>
 
-            {/* Keeping existing Modals and Pickers as is */}
             <Modal visible={showAddCategory} animationType="slide" transparent onRequestClose={() => setShowAddCategory(false)}>
-                <View style={styles.modalOverlay}>
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
                     <View style={[styles.modalContent, { backgroundColor: Colors.surface }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: Colors.text }]}>Add New Category</Text>
-                            <TouchableOpacity onPress={() => setShowAddCategory(false)}>
-                                <X size={24} color={Colors.text} />
+                            <Text style={[styles.modalTitle, { color: Colors.text }]}>New Category</Text>
+                            <TouchableOpacity onPress={() => setShowAddCategory(false)} style={{ padding: 4, backgroundColor: Colors.surfaceHighlight, borderRadius: 20 }}>
+                                <X size={20} color={Colors.text} />
                             </TouchableOpacity>
                         </View>
 
                         <Input
                             label="Category Name"
-                            placeholder="e.g., Groceries"
+                            placeholder="e.g., Entertainment"
                             value={newCategoryName}
                             onChangeText={setNewCategoryName}
                         />
 
-                        <Text style={[styles.label, { color: Colors.textSecondary, marginTop: 16, marginBottom: 8 }]}>Icon</Text>
-                        <TouchableOpacity
-                            style={[styles.pickerButton, { backgroundColor: Colors.background, borderColor: Colors.border }]}
-                            onPress={() => setShowIconPicker(true)}
-                        >
-                            <View style={[styles.iconPreview, { backgroundColor: selectedColor + '20' }]}>
-                                {renderIcon(selectedIcon, selectedColor, 24)}
-                            </View>
-                            <Text style={[styles.pickerButtonText, { color: Colors.text }]}>Select Icon</Text>
-                        </TouchableOpacity>
+                        <Text style={[styles.label, { color: Colors.textSecondary, marginTop: 20, marginBottom: 12 }]}>Icon & Color</Text>
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity
+                                style={[styles.pickerButton, { flex: 1, backgroundColor: Colors.background, borderColor: Colors.border }]}
+                                onPress={() => setShowIconPicker(true)}
+                            >
+                                <View style={[styles.iconPreview, { backgroundColor: selectedColor + '20' }]}>
+                                    {renderIcon(selectedIcon, selectedColor, 20)}
+                                </View>
+                                <Text style={[styles.pickerButtonText, { color: Colors.text }]}>Select Icon</Text>
+                            </TouchableOpacity>
 
-                        <Text style={[styles.label, { color: Colors.textSecondary, marginTop: 16, marginBottom: 8 }]}>Color</Text>
-                        <TouchableOpacity
-                            style={[styles.pickerButton, { backgroundColor: Colors.background, borderColor: Colors.border }]}
-                            onPress={() => setShowColorPicker(true)}
-                        >
-                            <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
-                            <Text style={[styles.pickerButtonText, { color: Colors.text }]}>Select Color</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.pickerButton, { flex: 1, backgroundColor: Colors.background, borderColor: Colors.border }]}
+                                onPress={() => setShowColorPicker(true)}
+                            >
+                                <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
+                                <Text style={[styles.pickerButtonText, { color: Colors.text }]}>Select Color</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <View style={styles.modalButtons}>
                             <Button
-                                title="Cancel"
-                                onPress={() => setShowAddCategory(false)}
-                                variant="secondary"
-                                style={{ flex: 1, marginRight: 8 }}
-                            />
-                            <Button
                                 title="Add Category"
                                 onPress={handleAddCategory}
-                                style={{ flex: 1, marginLeft: 8 }}
+                                style={{ flex: 1 }}
                             />
                         </View>
                     </View>
@@ -586,80 +573,23 @@ export default function SettingsScreen() {
                 onSelect={setSelectedColor}
                 onClose={() => setShowColorPicker(false)}
             />
+            {Platform.OS !== 'web' && showDatePicker && (
+                <DateTimePicker
+                    value={incomeStartDate ? new Date(incomeStartDate + '-01') : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={onDateChange}
+                    themeVariant={theme === 'dark' ? 'dark' : 'light'}
+                />
+            )}
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     header: {
-        paddingHorizontal: 20,
-        marginBottom: 10,
-    },
-    section: {
-        marginBottom: 24,
-        paddingHorizontal: 20,
-    },
-    sectionHeader: {
-        fontSize: 12,
-        fontFamily: 'Geist-SemiBold',
-        marginBottom: 10,
-        letterSpacing: 0.8,
-        opacity: 0.5,
-        marginLeft: 4,
-    },
-    card: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        backgroundColor: 'rgba(255,255,255,0.05)', // Fallback if theme color not applied directly
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(150,150,150,0.1)',
-    },
-    rowItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 4,
-    },
-    itemTitle: {
-        fontSize: 15,
-        fontFamily: 'Geist-SemiBold',
-    },
-    itemSubtitle: {
-        fontSize: 12,
-        marginTop: 2,
-        fontFamily: 'Geist-Medium',
-    },
-    themeToggleContainer: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        padding: 3,
-        borderRadius: 10,
-    },
-    themeOption: {
-        padding: 8,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: 'transparent',
-    },
-    currencyOption: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        borderWidth: 1,
-    },
-    currencyOptionText: {
-        fontSize: 12, // Keep small
-        fontFamily: 'Geist-SemiBold',
-    },
-    pickerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
+        paddingHorizontal: 24,
+        paddingBottom: 8,
     },
     categoryGrid: {
         flexDirection: 'row',
@@ -671,100 +601,72 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 10,
         paddingVertical: 6,
-        borderRadius: 12,
+        borderRadius: 16,
         borderWidth: 1,
-        gap: 6,
+        gap: 8,
     },
     categoryPillText: {
-        fontSize: 12,
+        fontSize: 13,
         fontFamily: 'Geist-Medium',
     },
-    deleteCategoryBtn: {
-        padding: 2,
-        marginLeft: 2,
-        opacity: 0.7,
-    },
-    menuRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        gap: 16,
-    },
-    iconBox: {
-        width: 38,
-        height: 38,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    menuText: {
-        fontSize: 15,
-        fontFamily: 'Geist-SemiBold',
-    },
-    menuSubtext: {
-        fontSize: 12,
-        color: '#888',
-        marginTop: 1,
-        fontFamily: 'Geist-Medium',
-    },
-    separator: {
-        height: 1,
-        backgroundColor: 'rgba(150, 150, 150, 0.1)',
-    },
-
-    // Keeping existing Modal styles for now
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 20,
-        maxHeight: '80%',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        padding: 24,
+        paddingBottom: 40,
+        maxHeight: '85%',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 20,
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 24,
     },
     modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20,
+        fontFamily: 'Geist-Bold',
     },
     label: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 4,
+        fontSize: 13,
+        fontFamily: 'Geist-SemiBold',
     },
     pickerButton: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
-        borderRadius: 12,
+        borderRadius: 16,
         borderWidth: 1,
-        gap: 12,
+        gap: 10,
     },
     iconPreview: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 32,
+        height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
     colorPreview: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#fff',
     },
     pickerButtonText: {
-        fontSize: 15,
-        fontWeight: '500',
+        fontSize: 14,
+        fontFamily: 'Geist-Medium',
     },
     modalButtons: {
         flexDirection: 'row',
-        marginTop: 24,
+        marginTop: 32,
     },
 });

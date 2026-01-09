@@ -1,4 +1,5 @@
 import { useStyles } from '@/constants/Styles';
+import { useAlert } from '@/context/AlertContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { Transaction, useExpense } from '@/store/expenseStore';
 import { format } from 'date-fns';
@@ -6,38 +7,39 @@ import { useRouter } from 'expo-router';
 import * as Icons from 'lucide-react-native';
 import { ArrowLeft, RefreshCcw, Trash2 } from 'lucide-react-native';
 import React from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TrashScreen() {
     const router = useRouter();
     const Styles = useStyles();
     const Colors = useThemeColor();
+    const { showAlert } = useAlert();
     const { trash, restoreTransaction, permanentDeleteTransaction, emptyTrash, restoreAllTrash, categories, currencySymbol } = useExpense();
 
     const handleRestore = (id: string) => {
-        Alert.alert('Restore', 'Restore this transaction?', [
+        showAlert('Restore', 'Restore this transaction?', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Restore', onPress: () => restoreTransaction(id) }
         ]);
     };
 
     const handleDelete = (id: string) => {
-        Alert.alert('Delete Permanently', 'This cannot be undone.', [
+        showAlert('Delete Permanently', 'This cannot be undone.', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Delete', style: 'destructive', onPress: () => permanentDeleteTransaction(id) }
         ]);
     };
 
     const handleEmptyTrash = () => {
-        Alert.alert('Empty Trash', 'Are you sure you want to permanently delete all items?', [
+        showAlert('Empty Trash', 'Are you sure you want to permanently delete all items?', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Empty Trash', style: 'destructive', onPress: emptyTrash }
         ]);
     };
 
     const handleRestoreAll = () => {
-        Alert.alert('Restore All', 'Are you sure you want to restore all items?', [
+        showAlert('Restore All', 'Are you sure you want to restore all items?', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Restore All', onPress: restoreAllTrash }
         ]);
@@ -71,7 +73,17 @@ export default function TrashScreen() {
                     <View style={[styles.deleteInfo, { backgroundColor: Colors.surfaceHighlight }]}>
                         <Icons.Clock size={12} color={Colors.textSecondary} />
                         <Text style={[styles.deleteTime, { color: Colors.textSecondary }]}>
-                            Deleted {format(new Date(item.deletedAt!), 'HH:mm')}
+                            {item.deletedAt ? (
+                                <>
+                                    Deleted {format(new Date(item.deletedAt), 'MMM dd')} •{' '}
+                                    {(() => {
+                                        const daysLeft = 30 - Math.floor((new Date().getTime() - new Date(item.deletedAt).getTime()) / (1000 * 60 * 60 * 24));
+                                        return <Text style={{ color: daysLeft <= 3 ? Colors.danger : Colors.textSecondary, fontWeight: daysLeft <= 3 ? 'bold' : 'normal' }}>
+                                            {daysLeft <= 0 ? 'Deleting soon' : `${daysLeft} days left`}
+                                        </Text>;
+                                    })()}
+                                </>
+                            ) : 'Unknown deletion date'}
                         </Text>
                     </View>
 
@@ -251,14 +263,18 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 8,
         gap: 4,
+        flex: 1, // Allow taking available space
+        marginRight: 8, // Add spacing between info and buttons
     },
     deleteTime: {
         fontSize: 10,
         fontFamily: 'Geist-Medium',
+        flexShrink: 1, // Allow text truncation
     },
     actionButtons: {
         flexDirection: 'row',
         gap: 8,
+        flexShrink: 0, // Prevent buttons from shrinking
     },
     actionButton: {
         flexDirection: 'row',

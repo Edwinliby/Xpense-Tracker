@@ -8,14 +8,16 @@ interface InputProps extends TextInputProps {
     error?: string;
     prefix?: string | React.ReactNode;
     icon?: keyof typeof Icons;
+    inputStyle?: any; // Allow custom text styling
+    containerStyle?: any;
 }
 
-export const Input: React.FC<InputProps> = ({ label, error, style, prefix, icon, ...props }) => {
+export const Input: React.FC<InputProps> = ({ label, error, style, prefix, icon, inputStyle, containerStyle, ...props }) => {
     const Colors = useThemeColor();
     const IconComponent = icon ? (Icons as any)[icon] : null;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, containerStyle]}>
             {label && <Text style={[styles.label, { color: Colors.textSecondary }]}>{label}</Text>}
             <View style={[
                 styles.inputContainer,
@@ -32,14 +34,15 @@ export const Input: React.FC<InputProps> = ({ label, error, style, prefix, icon,
                     </View>
                 )}
                 {prefix && (
-                    <Text style={[styles.prefix, { color: Colors.text }]}>{prefix}</Text>
+                    <Text style={[styles.prefix, { color: props.placeholderTextColor || Colors.text }]}>{prefix}</Text>
                 )}
                 <TextInput
                     style={[
                         styles.input,
                         {
                             color: Colors.text,
-                        }
+                        },
+                        inputStyle
                     ]}
                     placeholderTextColor={Colors.textSecondary}
                     {...props}

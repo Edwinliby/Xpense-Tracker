@@ -1,10 +1,11 @@
+import { useAlert } from '@/context/AlertContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { SavingsGoal } from '@/types/expense';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 interface AddGoalModalProps {
     visible: boolean;
@@ -18,6 +19,7 @@ const ICONS = ['airplane', 'car', 'home', 'desktop', 'gift', 'school', 'medkit',
 const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGoal }) => {
     const { addGoal, updateGoal, deleteGoal, currencySymbol } = useExpense();
     const Colors = useThemeColor();
+    const { showAlert } = useAlert();
     const [name, setName] = useState('');
     const [targetAmount, setTargetAmount] = useState('');
     const [priority, setPriority] = useState('');
@@ -44,13 +46,13 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
 
     const handleSave = () => {
         if (!name || !targetAmount) {
-            Alert.alert('Error', 'Please fill in all fields');
+            showAlert('Error', 'Please fill in all fields');
             return;
         }
 
         const target = parseFloat(targetAmount);
         if (isNaN(target) || target <= 0) {
-            Alert.alert('Error', 'Please enter a valid target amount');
+            showAlert('Error', 'Please enter a valid target amount');
             return;
         }
 
@@ -84,7 +86,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ visible, onClose, initialGo
 
     const handleDelete = () => {
         if (!initialGoal) return;
-        Alert.alert(
+        showAlert(
             'Delete Goal',
             `Are you sure you want to delete "${initialGoal.name}"? This cannot be undone.`,
             [

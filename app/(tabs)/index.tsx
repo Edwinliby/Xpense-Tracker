@@ -7,7 +7,7 @@ import { TutorialOverlay } from '@/components/TutorialOverlay';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
-import { differenceInMonths, endOfMonth, format, getDaysInMonth, isWithinInterval, parseISO, startOfMonth, subMonths } from 'date-fns';
+import { addMonths, differenceInMonths, endOfMonth, format, getDaysInMonth, isWithinInterval, parseISO, startOfMonth, subMonths } from 'date-fns';
 import { router } from 'expo-router';
 import { ChevronLeft, ChevronRight, Search, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function DashboardScreen() {
   const Styles = useStyles();
   const Colors = useThemeColor();
-  const { transactions, budget, income, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement, hasSeenTutorial, completeTutorial, loading } = useExpense();
+  const { transactions, budget, income, incomeDuration, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement, hasSeenTutorial, completeTutorial, loading } = useExpense();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -95,17 +95,41 @@ export default function DashboardScreen() {
       .reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
-  // Helper to check if a date is after income start date
-  const isAfterIncomeStart = useCallback((date: Date) => {
-    if (!incomeStartDate) return true;
-    const [startYear, startMonth] = incomeStartDate.split('-').map(Number);
-    const dateYear = date.getFullYear();
-    const dateMonth = date.getMonth() + 1; // 1-indexed
+  // Helper to check if a date is within the active income period
+  const isWithinIncomePeriod = useCallback((date: Date) => {
+    if (!incomeStartDate) return false; // changed from true to false: if no start date, we assume no income period? Or stick to old logic?
+    // Old logic: "if (!incomeStartDate) return true;" -> wait, if no start date, logic implies "always valid"?
+    // store default is null.
+    // If user hasn't set up, usually we don't show projections.
+    // Let's stick to "true" if undefined? No, explicit start date is better.
+    // Actually, store default might mean "start from beginning of time".
+    // But let's check store implementation. Store treats null as "no tracking start date".
+    // But calculateMonthlyBreakdown: "if (trackingStartDate && ...)"
+    // If no trackingStartDate, it doesn't add static income?
+    // Let's verify store logic.
+    // Store: "if (trackingStartDate && monthStart >= trackingStartDate && income > 0)"
+    // So if no incomeStartDate, NO static income is added.
+    // So here, return FALSE if no incomeStartDate.
 
-    if (dateYear > startYear) return true;
-    if (dateYear === startYear && dateMonth >= startMonth) return true;
-    return false;
-  }, [incomeStartDate]);
+    const [startYear, startMonth] = incomeStartDate.split('-').map(Number);
+    const startDate = new Date(startYear, startMonth - 1, 1);
+
+    // Check start
+    if (date < startDate) return false;
+
+    // Check duration
+    const duration = incomeDuration || 12;
+    const endDate = addMonths(startDate, duration);
+    // Income stops AT endDate (exclusive or inclusive?)
+    // Store: "if (monthStart < endOfIncome)" where endOfIncome = addMonths(start, duration).
+    // So if start=Jan 1, duration=1, end=Feb 1. Jan 1 < Feb 1 (True). Feb 1 < Feb 1 (False).
+    // So exclusive of the exact end date month-start?
+    // Yes.
+
+    if (date >= endDate) return false;
+
+    return true;
+  }, [incomeStartDate, incomeDuration]);
 
   const getEffectiveSpent = useCallback((start: Date, end: Date, options?: { includeExcluded?: boolean; excludeRecurring?: boolean }) => {
     return getSpentInInterval(start, end, options);
@@ -190,12 +214,16 @@ export default function DashboardScreen() {
       data.push({
         value: cumulativeTotal,
         date: i.toString(),
-        label: i % 5 === 0 || i === 1 ? i.toString() : '',
-        dataPointText: (i % 5 === 0 || i === daysInMonth) && cumulativeTotal > 0 ? cumulativeTotal.toFixed(0) : '',
+        // Explicitly show 1st, Last, and every 5th day.
+        label: (i === 1 || i === daysInMonth || (i % 5 === 0 && i !== daysInMonth - 1)) ? i.toString() : '',
+        // dataPointText: (i % 5 === 0 || i === daysInMonth) && cumulativeTotal > 0 ? cumulativeTotal.toFixed(0) : '',
         textColor: Colors.text,
         textShiftY: -6,
         textShiftX: -4,
         textFontSize: 10,
+        // Ensure data points are hidden in monthly view (handled by prop, but empty text helps)
+        dataPointText: '',
+        labelTextStyle: i === daysInMonth ? { transform: [{ translateX: -12 }], position: 'relative' as const, top: -1, width: 30, fontSize: 10, color: Colors.text } : undefined,
       });
     }
     return data;
@@ -299,12 +327,12 @@ export default function DashboardScreen() {
       // Skip future months
       if (monthStart > endOfMonth(now)) continue;
 
-      if (isAfterIncomeStart(monthStart)) {
+      if (isWithinIncomePeriod(monthStart)) {
         total += getEffectiveSpent(monthStart, monthEnd); // Excludes 'excluded' txns
       }
     }
     return total;
-  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart, now]);
+  }, [selectedYear, getEffectiveSpent, isWithinIncomePeriod, now]);
 
   // NEW: Calculate total spent ONLY for active budget months (for Remaining amount)
   const activeYearlyTotalSpent = useMemo(() => {
@@ -316,32 +344,28 @@ export default function DashboardScreen() {
       // Skip future months
       if (monthStart > endOfMonth(now)) continue;
 
-      if (isAfterIncomeStart(monthStart)) {
+      if (isWithinIncomePeriod(monthStart)) {
         total += getEffectiveSpent(monthStart, monthEnd, { includeExcluded: true }); // Includes 'excluded' txns
       }
     }
     return total;
-  }, [selectedYear, getEffectiveSpent, isAfterIncomeStart, now]);
+  }, [selectedYear, getEffectiveSpent, isWithinIncomePeriod, now]);
 
   const maxYearlyValue = useMemo(() => {
     return Math.max(...yearlyData.map(d => d.value), 100);
   }, [yearlyData]);
 
   const activeMonthsCount = useMemo(() => {
-    let monthsWithIncome = 12;
-    if (incomeStartDate) {
-      const [startYear, startMonth] = incomeStartDate.split('-').map(Number);
-      const startMonthIndex = startMonth - 1;
-
-      if (startYear > selectedYear) {
-        monthsWithIncome = 0;
-      } else if (startYear === selectedYear) {
-        const endMonthIndex = 11;
-        monthsWithIncome = Math.max(0, endMonthIndex - startMonthIndex + 1);
+    if (!incomeStartDate) return 0;
+    let count = 0;
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(selectedYear, i, 1);
+      if (isWithinIncomePeriod(monthDate)) {
+        count++;
       }
     }
-    return monthsWithIncome;
-  }, [incomeStartDate, selectedYear]);
+    return count;
+  }, [incomeStartDate, selectedYear, isWithinIncomePeriod]);
 
   const annualIncome = useMemo(() => {
     return income * activeMonthsCount;
@@ -353,12 +377,12 @@ export default function DashboardScreen() {
         const date = new Date(t.date);
         return t.type === 'income' &&
           date.getFullYear() === selectedYear &&
-          isAfterIncomeStart(date);
+          isWithinIncomePeriod(date);
       })
       .reduce((acc, curr) => acc + curr.amount, 0);
 
     return (annualIncome + yearlyIncomeTransactions) - activeYearlyTotalSpent;
-  }, [annualIncome, activeYearlyTotalSpent, transactions, selectedYear, isAfterIncomeStart]);
+  }, [annualIncome, activeYearlyTotalSpent, transactions, selectedYear, isWithinIncomePeriod]);
 
   const selectedMonthSpent = useMemo(() =>
     getEffectiveSpent(monthRange.start, monthRange.end),
@@ -378,10 +402,10 @@ export default function DashboardScreen() {
 
 
   const selectedMonthSaved = useMemo(() => {
-    const monthlyStaticIncome = isAfterIncomeStart(monthRange.start) ? income : 0;
+    const monthlyStaticIncome = isWithinIncomePeriod(monthRange.start) ? income : 0;
     const totalIncome = monthlyStaticIncome + selectedMonthIncomeTransactions;
     return totalIncome - selectedMonthTotalSpent;
-  }, [income, selectedMonthTotalSpent, isAfterIncomeStart, monthRange, selectedMonthIncomeTransactions]);
+  }, [income, selectedMonthTotalSpent, isWithinIncomePeriod, monthRange, selectedMonthIncomeTransactions]);
 
   // --- Active Data Selection ---
   const chartData = useMemo(() => viewMode === 'yearly' ? yearlyData : monthlyData, [viewMode, yearlyData, monthlyData]);
@@ -405,6 +429,10 @@ export default function DashboardScreen() {
     return width - 40; // Mobile default
   }, [width, isDesktop]);
 
+  const realTimeCurrentMonthSpent = useMemo(() => {
+    return getEffectiveSpent(startOfMonth(now), endOfMonth(now), { includeExcluded: false });
+  }, [getEffectiveSpent, now]);
+
   return (
     <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -414,7 +442,7 @@ export default function DashboardScreen() {
           <View>
             <Text style={[styles.greeting, { color: Colors.textSecondary }]}>Welcome back,</Text>
             <Text style={[styles.title, { color: Colors.text }]}>
-              {budget > 0 && budget < displaySpent ? 'Lavish Spender' : 'Economical Man'}
+              {budget > 0 && budget < realTimeCurrentMonthSpent ? 'Lavish Spender' : 'Economical Man'}
             </Text>
           </View>
 
@@ -435,7 +463,7 @@ export default function DashboardScreen() {
             {/* --- Summary Cards Section --- */}
             <View style={styles.summarySection}>
               <View style={[styles.summaryCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <View>
                     <Text style={[styles.label, { color: Colors.textSecondary }]}>Total Spent</Text>
                     <Text style={[styles.amount, { color: Colors.text }]}>{currencySymbol}{displaySpent.toLocaleString()}</Text>
@@ -444,7 +472,7 @@ export default function DashboardScreen() {
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[styles.label, { color: Colors.textSecondary }]}>Remaining</Text>
                     {(viewMode === 'monthly' || activeMonthsCount > 0) ? (
-                      (income > 0 && (viewMode === 'monthly' ? isAfterIncomeStart(monthRange.start) : true)) ? (
+                      (income > 0 && (viewMode === 'monthly' ? isWithinIncomePeriod(monthRange.start) : true)) ? (
                         <>
                           <Text style={[styles.amount, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
                             {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
@@ -489,7 +517,7 @@ export default function DashboardScreen() {
             <BudgetWidget
               spent={viewMode === 'monthly' ? selectedMonthSpent : activeYearlyBudgetSpent}
               budget={viewMode === 'monthly'
-                ? (budget > 0 ? budget : ((isAfterIncomeStart(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
+                ? (budget > 0 ? budget : ((isWithinIncomePeriod(monthRange.start) ? income : 0) + selectedMonthIncomeTransactions))
                 : (budget > 0 ? (budget * activeMonthsCount) : annualIncome)
               }
               currencySymbol={currencySymbol}
@@ -579,16 +607,13 @@ export default function DashboardScreen() {
                         // Smart Navigation: Go to previous ACTIVE month
                         let newIndex = selectedBarIndex - 1;
                         while (newIndex >= 0) {
-                          if (monthlyData[newIndex].hasActivity || newIndex === 0) {
-                            // Found active month OR reached the very beginning (always show oldest)
+                          if (monthlyData[newIndex].hasActivity) {
                             setSelectedBarIndex(newIndex);
                             break;
                           }
                           newIndex--;
                         }
-                        if (newIndex < 0 && selectedBarIndex > 0) {
-                          setSelectedBarIndex(0);
-                        }
+                        // If no earlier active month found, stay on current (do nothing)
                       }
                     }}
                     style={{
@@ -623,8 +648,7 @@ export default function DashboardScreen() {
                         let newIndex = selectedBarIndex + 1;
                         const maxIndex = monthlyData.length - 1;
                         while (newIndex <= maxIndex) {
-                          if (monthlyData[newIndex].hasActivity || newIndex === maxIndex) {
-                            // Found active month OR reached current/latest month (always show current)
+                          if (monthlyData[newIndex].hasActivity) {
                             setSelectedBarIndex(newIndex);
                             break;
                           }
@@ -763,6 +787,8 @@ export default function DashboardScreen() {
   );
 }
 
+
+
 const styles = StyleSheet.create({
   desktopGrid: {
     flexDirection: 'row',
@@ -827,7 +853,9 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     borderRadius: 24,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 5,
     minHeight: 180,
   },
   label: {
@@ -844,7 +872,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   chartWrapper: {
-    marginTop: 10,
     marginLeft: -10,
     alignItems: 'center'
   },

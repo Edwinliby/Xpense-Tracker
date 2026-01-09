@@ -1,10 +1,11 @@
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { useAlert } from '@/context/AlertContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Register() {
@@ -15,14 +16,15 @@ export default function Register() {
     const { signUp } = useAuth();
     const { colors } = useTheme();
     const router = useRouter();
+    const { showAlert } = useAlert();
 
     const handleSignUp = async () => {
         if (!email || !password || !confirmPassword) {
-            Alert.alert('Error', 'Please fill in all fields');
+            showAlert('Error', 'Please fill in all fields');
             return;
         }
         if (password !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match');
+            showAlert('Error', 'Passwords do not match');
             return;
         }
         setLoading(true);
@@ -30,9 +32,9 @@ export default function Register() {
         setLoading(false);
 
         if (error) {
-            Alert.alert('Registration Failed', error.message);
+            showAlert('Registration Failed', error.message);
         } else if (!data?.session) {
-            Alert.alert('Success', 'Please check your email to verify your account.', [
+            showAlert('Success', 'Please check your email to verify your account.', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
         }

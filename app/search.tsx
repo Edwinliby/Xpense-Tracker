@@ -17,6 +17,7 @@ export default function SearchScreen() {
     const { transactions, categories, trash } = useExpense();
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [noteQuery, setNoteQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
     const [showFilters, setShowFilters] = useState(false);
@@ -43,6 +44,7 @@ export default function SearchScreen() {
                 t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 t.amount.toString().includes(searchQuery);
 
+            const matchesNote = !noteQuery || t.description?.toLowerCase().includes(noteQuery.toLowerCase());
             const matchesCategory = !selectedCategory || t.category === selectedCategory;
 
             const txDate = new Date(t.date);
@@ -52,16 +54,17 @@ export default function SearchScreen() {
             if (endOfDay) endOfDay.setHours(23, 59, 59, 999);
             const matchesEnd = !endOfDay || txDate <= endOfDay;
 
-            return matchesQuery && matchesCategory && matchesStart && matchesEnd;
+            return matchesQuery && matchesNote && matchesCategory && matchesStart && matchesEnd;
         }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         return results;
-    }, [transactions, trash, searchQuery, selectedCategory, dateRange]);
+    }, [transactions, trash, searchQuery, noteQuery, selectedCategory, dateRange]);
 
-    const activeFiltersCount = (selectedCategory ? 1 : 0) + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
+    const activeFiltersCount = (selectedCategory ? 1 : 0) + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0) + (noteQuery ? 1 : 0);
 
     const clearFilters = () => {
         setSelectedCategory(null);
+        setNoteQuery('');
         setDateRange({ start: null, end: null });
         setShowFilters(false);
     };
@@ -131,6 +134,23 @@ export default function SearchScreen() {
                         </View>
 
                         <ScrollView contentContainerStyle={styles.filterScroll}>
+                            {/* Note Filter */}
+                            <Text style={[styles.filterLabel, { color: Colors.textSecondary }]}>Note Contains</Text>
+                            <View style={[styles.searchBar, { backgroundColor: Colors.background, marginBottom: 24, height: 48, paddingHorizontal: 16 }]}>
+                                <TextInput
+                                    style={[styles.searchInput, { color: Colors.text }]}
+                                    placeholder="Enter note..."
+                                    placeholderTextColor={Colors.textSecondary}
+                                    value={noteQuery}
+                                    onChangeText={setNoteQuery}
+                                />
+                                {noteQuery.length > 0 && (
+                                    <TouchableOpacity onPress={() => setNoteQuery('')}>
+                                        <X size={16} color={Colors.textSecondary} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
                             {/* Date Range */}
                             <Text style={[styles.filterLabel, { color: Colors.textSecondary }]}>Date Range</Text>
                             <View style={styles.dateRow}>

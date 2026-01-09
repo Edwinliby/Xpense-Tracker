@@ -1,8 +1,9 @@
+import { useAlert } from '@/context/AlertContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface AddFundsModalProps {
     visible: boolean;
@@ -16,6 +17,7 @@ interface AddFundsModalProps {
 const AddFundsModal: React.FC<AddFundsModalProps> = ({ visible, onClose, goalId, goalName, currentAmount, targetAmount }) => {
     const { updateGoal, currencySymbol, transactions, income } = useExpense();
     const Colors = useThemeColor();
+    const { showAlert } = useAlert();
     const [amount, setAmount] = useState('');
 
     // Calculate remaining monthly income
@@ -41,13 +43,13 @@ const AddFundsModal: React.FC<AddFundsModalProps> = ({ visible, onClose, goalId,
 
         const value = parseFloat(amount);
         if (isNaN(value) || value <= 0) {
-            Alert.alert('Error', 'Please enter a valid amount');
+            showAlert('Error', 'Please enter a valid amount');
             return;
         }
 
         const newAmount = currentAmount + value;
         if (newAmount > targetAmount) {
-            Alert.alert('Whoops', `You only need ${currencySymbol}${(targetAmount - currentAmount).toFixed(2)} to reach your goal!`);
+            showAlert('Whoops', `You only need ${currencySymbol}${(targetAmount - currentAmount).toFixed(2)} to reach your goal!`);
             return;
         }
 
@@ -57,7 +59,7 @@ const AddFundsModal: React.FC<AddFundsModalProps> = ({ visible, onClose, goalId,
         });
 
         if (newAmount >= targetAmount) {
-            Alert.alert('Congratulations! 🎉', `You've reached your goal for ${goalName}!`);
+            showAlert('Congratulations! 🎉', `You've reached your goal for ${goalName}!`);
         }
 
         setAmount('');
@@ -66,7 +68,7 @@ const AddFundsModal: React.FC<AddFundsModalProps> = ({ visible, onClose, goalId,
 
     const handleAutoFill = () => {
         if (remainingIncome <= 0) {
-            Alert.alert('No Savings Available', 'Your expenses exceed your income for this month.');
+            showAlert('No Savings Available', 'Your expenses exceed your income for this month.');
             return;
         }
         // Cap the auto-fill at the remaining amount needed for the goal

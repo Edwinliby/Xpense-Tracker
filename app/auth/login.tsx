@@ -1,10 +1,11 @@
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { useAlert } from '@/context/AlertContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Login() {
@@ -12,11 +13,12 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const { signIn } = useAuth();
+    const { showAlert } = useAlert();
     const { colors } = useTheme();
 
     const handleSignIn = async () => {
         if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
+            showAlert('Error', 'Please fill in all fields');
             return;
         }
         setLoading(true);
@@ -24,7 +26,7 @@ export default function Login() {
         setLoading(false);
 
         if (error) {
-            Alert.alert('Login Failed', error.message);
+            showAlert('Login Failed', error.message);
         }
     };
 

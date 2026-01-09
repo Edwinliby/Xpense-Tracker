@@ -1,7 +1,7 @@
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { ActivityIndicator, Animated, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
+import { ActivityIndicator, Animated, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 interface ButtonProps {
     title: string;
@@ -13,6 +13,7 @@ interface ButtonProps {
     style?: ViewStyle;
     textStyle?: TextStyle;
     useGradient?: boolean;
+    icon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -25,10 +26,12 @@ export const Button: React.FC<ButtonProps> = ({
     style,
     textStyle,
     useGradient = true,
+    icon,
 }) => {
     const Colors = useThemeColor();
     const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
+    // ... (animations) ...
     const handlePressIn = () => {
         Animated.spring(scaleAnim, {
             toValue: 0.96,
@@ -44,6 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
             useNativeDriver: true,
         }).start();
     };
+    // ...
 
     const getGradientColors = (): [string, string] => {
         if (variant === 'primary') return Colors.primaryGradient as [string, string];
@@ -92,11 +96,15 @@ export const Button: React.FC<ButtonProps> = ({
             {loading ? (
                 <ActivityIndicator color={getTextColor()} />
             ) : (
-                <Text style={[styles.text, { color: getTextColor(), fontSize: getFontSize() }, textStyle]}>{title}</Text>
+                <>
+                    {icon && <View style={{ marginRight: 8 }}>{icon}</View>}
+                    <Text style={[styles.text, { color: getTextColor(), fontSize: getFontSize() }, textStyle]}>{title}</Text>
+                </>
             )}
         </>
     );
-
+    // ...
+    // ...
     if (useGradient && variant !== 'outline' && variant !== 'secondary') {
         return (
             <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>

@@ -1,8 +1,10 @@
 import { Button } from '@/components/Button';
+import { CategoryPicker } from '@/components/CategoryPicker';
 import { ImageEditor } from '@/components/ImageEditor';
 import { ImageViewer } from '@/components/ImageViewer';
 import { Input } from '@/components/Input';
 import { WebDatePicker } from '@/components/WebDatePicker';
+import { useAlert } from '@/context/AlertContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -13,7 +15,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import * as Icons from 'lucide-react-native';
 import { Calendar, Camera, Image as ImageIcon, RotateCw, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddTransactionScreen() {
@@ -22,6 +24,7 @@ export default function AddTransactionScreen() {
     const { addTransaction, editTransaction, deleteTransaction, categories, currencySymbol } = useExpense();
     const params = useLocalSearchParams();
     const Colors = useThemeColor();
+    const { showAlert } = useAlert();
 
     const isEditing = !!params.id;
     const [amount, setAmount] = useState('');
@@ -37,6 +40,7 @@ export default function AddTransactionScreen() {
     const [receiptImage, setReceiptImage] = useState<string | null>(null);
     const [showImageEditor, setShowImageEditor] = useState(false);
     const [showImageViewer, setShowImageViewer] = useState(false);
+    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [isRecurring, setIsRecurring] = useState(false);
     const [excludeFromBudget, setExcludeFromBudget] = useState(false);
 
@@ -95,32 +99,32 @@ export default function AddTransactionScreen() {
         const finalAmount = parseFloat(amount);
 
         if (!finalAmount) {
-            Alert.alert('Error', 'Please enter an amount');
+            showAlert('Error', 'Please enter an amount');
             return;
         }
 
         if (type === 'expense' && !category) {
-            Alert.alert('Error', 'Please select a category');
+            showAlert('Error', 'Please select a category');
             return;
         }
 
         if (isNaN(finalAmount)) {
-            Alert.alert('Error', 'Invalid amount');
+            showAlert('Error', 'Invalid amount');
             return;
         }
 
         if (isNaN(date.getTime())) {
-            Alert.alert('Error', 'Invalid date');
+            showAlert('Error', 'Invalid date');
             return;
         }
 
         if (type === 'expense' && isFriendPayment && !paidBy.trim()) {
-            Alert.alert('Error', "Please enter friend's name");
+            showAlert('Error', "Please enter friend's name");
             return;
         }
 
         if (type === 'expense' && isLent && !lentTo.trim()) {
-            Alert.alert('Error', "Please enter friend's name");
+            showAlert('Error', "Please enter friend's name");
             return;
         }
 
@@ -151,9 +155,9 @@ export default function AddTransactionScreen() {
             router.back();
         } catch (error) {
             console.error("Failed to save transaction:", error);
-            Alert.alert('Error', 'Failed to save transaction');
+            showAlert('Error', 'Failed to save transaction');
         }
-    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring, excludeFromBudget]);
+    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring, excludeFromBudget, showAlert]);
 
 
 
@@ -174,7 +178,7 @@ export default function AddTransactionScreen() {
         const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
         if (permissionResult.granted === false) {
-            Alert.alert("Permission to access camera is required!");
+            showAlert('Permission required', 'Permission to access camera is required!');
             return;
         }
 
@@ -192,10 +196,10 @@ export default function AddTransactionScreen() {
     const handleDelete = useCallback(() => {
         const id = Array.isArray(params.id) ? params.id[0] : params.id;
         if (!id) {
-            Alert.alert('Error', 'Transaction ID not found');
+            showAlert('Error', 'Transaction ID not found');
             return;
         }
-        Alert.alert('Delete', 'Are you sure?', [
+        showAlert('Delete', 'Are you sure?', [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Delete', style: 'destructive', onPress: () => {
@@ -204,7 +208,7 @@ export default function AddTransactionScreen() {
                 }
             }
         ]);
-    }, [params.id, deleteTransaction, router]);
+    }, [params.id, deleteTransaction, router, showAlert]);
 
     const onChangeDate = useCallback((_event: any, selectedDate?: Date) => {
         setShowDatePicker(Platform.OS === 'ios');
@@ -307,40 +311,46 @@ export default function AddTransactionScreen() {
                         ))}
                     </View>
 
-                    {/* Category Section */}
+                    {/* Category Selection */}
                     <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>Category</Text>
-                    <View style={styles.categoryContainer}>
-                        {categories.map((cat) => {
-                            const IconComponent = (Icons as any)[cat.icon];
-                            const isSelected = category === cat.name;
-                            return (
-                                <TouchableOpacity
-                                    key={cat.id}
-                                    style={[
-                                        styles.categoryChip,
-                                        {
-                                            backgroundColor: isSelected ? cat.color : Colors.surface,
-                                            borderColor: isSelected ? cat.color : Colors.border,
-                                            transform: [{ scale: isSelected ? 1.05 : 1 }]
-                                        }
-                                    ]}
-                                    onPress={() => setCategory(cat.name)}
-                                >
-                                    {IconComponent && (
-                                        <IconComponent
-                                            size={16}
-                                            color={isSelected ? '#fff' : cat.color}
-                                        />
-                                    )}
-                                    <Text style={[
-                                        styles.categoryText,
-                                        { color: isSelected ? '#fff' : Colors.text }
-                                    ]}>
-                                        {cat.name}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
+                    <View style={{ marginBottom: 30 }}>
+                        <TouchableOpacity
+                            style={[
+                                styles.categorySelectButton,
+                                {
+                                    backgroundColor: category ? (categories.find(c => c.name === category)?.color || Colors.surface) : Colors.surface,
+                                    borderColor: category ? (categories.find(c => c.name === category)?.color || Colors.border) : Colors.border,
+                                }
+                            ]}
+                            onPress={() => setShowCategoryPicker(true)}
+                        >
+                            {category ? (
+                                <>
+                                    <View style={styles.selectedCategoryContent}>
+                                        <View style={[styles.selectedCategoryIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                            {(() => {
+                                                const cat = categories.find(c => c.name === category);
+                                                if (!cat) return <Icons.HelpCircle size={24} color="#fff" />;
+                                                const IconComponent = (Icons as any)[cat.icon];
+                                                return IconComponent ? <IconComponent size={24} color="#fff" /> : null;
+                                            })()}
+                                        </View>
+                                        <Text style={[styles.selectedCategoryText, { color: '#fff' }]}>{category}</Text>
+                                    </View>
+                                    <View style={[styles.changeCategoryBadge, { backgroundColor: 'rgba(0,0,0,0.1)' }]}>
+                                        <Text style={{ color: '#fff', fontSize: 12, fontFamily: 'Geist-Medium' }}>Change</Text>
+                                        <Icons.ChevronDown size={14} color="#fff" />
+                                    </View>
+                                </>
+                            ) : (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                    <View style={[styles.selectedCategoryIcon, { backgroundColor: Colors.surfaceHighlight }]}>
+                                        <Icons.LayoutGrid size={24} color={Colors.textSecondary} />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontFamily: 'Geist-Medium', color: Colors.textSecondary }}>Select Category</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
                     </View>
 
                     {/* Details Card */}
@@ -415,7 +425,7 @@ export default function AddTransactionScreen() {
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.removeReceipt}
-                                            onPress={() => Alert.alert('Remove', 'Delete receipt?', [
+                                            onPress={() => showAlert('Remove', 'Delete receipt?', [
                                                 { text: 'Cancel', style: 'cancel' },
                                                 { text: 'Delete', style: 'destructive', onPress: () => setReceiptImage(null) }
                                             ])}
@@ -576,6 +586,13 @@ export default function AddTransactionScreen() {
                 imageUri={receiptImage}
                 onClose={() => setShowImageViewer(false)}
             />
+            <CategoryPicker
+                visible={showCategoryPicker}
+                categories={categories}
+                selectedCategory={category}
+                onSelect={setCategory}
+                onClose={() => setShowCategoryPicker(false)}
+            />
         </SafeAreaView >
     );
 }
@@ -659,25 +676,41 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         marginLeft: 4,
     },
-    categoryContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: 30,
-    },
-    categoryChip: {
+    categorySelectButton: {
+        width: '100%',
+        padding: 12,
+        borderRadius: 20,
+        borderWidth: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
+        justifyContent: 'space-between',
+        minHeight: 64,
+    },
+    selectedCategoryContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    selectedCategoryIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selectedCategoryText: {
+        fontSize: 18,
+        fontFamily: 'Geist-Bold',
+    },
+    changeCategoryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
         paddingVertical: 6,
-        borderRadius: 24,
-        borderWidth: 1,
-        gap: 6,
+        borderRadius: 12,
     },
-    categoryText: {
-        fontSize: 12,
-        fontFamily: 'Geist-Medium',
-    },
+
     card: {
         borderRadius: 20,
         padding: 6,

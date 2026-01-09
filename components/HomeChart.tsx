@@ -28,7 +28,8 @@ export const HomeChart: React.FC<HomeChartProps> = ({
     return {
       width: availableWidth,
       height: 180,
-      spacing: (availableWidth - 20) / (Math.max(data.length, 1)), // Adjusted spacing calculation
+      // availableWidth - 20 (initial). Use data.length (not -1) to leave a bit of margin at end.
+      spacing: (availableWidth - 20) / (data.length > 1 ? data.length - 1 : 1),
       initialSpacing: 20,
     };
   }, [data.length, customWidth, screenWidth]);
@@ -39,7 +40,7 @@ export const HomeChart: React.FC<HomeChartProps> = ({
         data={data}
         data2={data2}
         height={chartConfig.height}
-        width={chartConfig.width}
+        width={chartConfig.width + 20}
         spacing={chartConfig.spacing}
         initialSpacing={chartConfig.initialSpacing}
         yAxisThickness={0}
@@ -69,13 +70,13 @@ export const HomeChart: React.FC<HomeChartProps> = ({
         hideDataPoints={viewMode === 'monthly'} // Show points only in Yearly mode to encourage clicking
         // Disable default focus to prevent z-index issues with the native dot
         focusEnabled={false}
-        onPress={(item: { onPress: (arg0: any) => any; }) => item.onPress && item.onPress(item)}
+        onPress={(item: lineDataItem & { onPress?: (item: lineDataItem) => void }) => item.onPress && item.onPress(item)}
 
         // Text
         textColor={Colors.text}
         textFontSize={10}
         textShiftY={-6}
-        xAxisLabelTextStyle={{ color: Colors.text, fontSize: 11, fontFamily: 'Geist-Medium' }}
+        xAxisLabelTextStyle={{ color: Colors.text, fontSize: 10, fontFamily: 'Geist-Medium', width: 40, textAlign: 'center' }}
 
         // Interaction / Pointer
         pointerConfig={{

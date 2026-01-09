@@ -1,6 +1,7 @@
 import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
 import { WebContainer } from '@/components/WebContainer';
 import { Colors } from '@/constants/Colors';
+import { AlertProvider } from '@/context/AlertContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
@@ -40,11 +41,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <ExpenseProvider>
-          <ThemeProvider>
-            <AppContent />
-          </ThemeProvider>
-        </ExpenseProvider>
+        <AlertProvider>
+          <ExpenseProvider>
+            <ThemeProvider>
+              <AppContent />
+            </ThemeProvider>
+          </ExpenseProvider>
+        </AlertProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

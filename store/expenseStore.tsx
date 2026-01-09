@@ -1,3 +1,4 @@
+import { useAlert } from '@/context/AlertContext';
 import { useAuth } from '@/context/AuthContext';
 import { fetchExchangeRate } from '@/lib/currency';
 import { fromSupabaseAchievement, fromSupabaseCategory, fromSupabaseSavingsGoal, fromSupabaseTransaction, supabase, toSupabaseAchievement, toSupabaseCategory, toSupabaseSavingsGoal, toSupabaseTransaction } from '@/lib/supabase';
@@ -9,7 +10,6 @@ import NetInfo from '@react-native-community/netinfo';
 import { addMonths, endOfMonth } from 'date-fns';
 import _ from 'lodash';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 
 
 
@@ -24,6 +24,7 @@ interface ExpenseContextType {
     categories: Category[];
     budget: number;
     income: number;
+    incomeDuration: number; // Duration in months, default 12
     incomeStartDate: string | null;
     addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
     editTransaction: (id: string, updatedTransaction: Partial<Transaction>) => void;
@@ -37,6 +38,7 @@ interface ExpenseContextType {
     deleteCategory: (id: string) => void;
     setBudget: (amount: number) => void;
     setIncome: (amount: number) => void;
+    setIncomeDuration: (months: number) => void;
     setIncomeStartDate: (date: string | null) => void;
     purgeData: (deleteAccount?: boolean) => Promise<void>;
     loading: boolean;
@@ -66,7 +68,7 @@ interface ExpenseContextType {
 }
 
 interface SyncAction {
-    type: 'ADD_TRANSACTION' | 'UPDATE_TRANSACTION' | 'DELETE_TRANSACTION' | 'RESTORE_TRANSACTION' | 'PERMANENT_DELETE_TRANSACTION' | 'ADD_CATEGORY' | 'UPDATE_CATEGORY' | 'DELETE_CATEGORY' | 'SET_BUDGET' | 'SET_INCOME' | 'SET_INCOME_START_DATE' | 'SET_CURRENCY' | 'DISMISS_WARNING' | 'UPDATE_ACHIEVEMENTS' | 'ADD_GOAL' | 'UPDATE_GOAL' | 'DELETE_GOAL';
+    type: 'ADD_TRANSACTION' | 'UPDATE_TRANSACTION' | 'DELETE_TRANSACTION' | 'RESTORE_TRANSACTION' | 'PERMANENT_DELETE_TRANSACTION' | 'ADD_CATEGORY' | 'UPDATE_CATEGORY' | 'DELETE_CATEGORY' | 'SET_BUDGET' | 'SET_INCOME' | 'SET_INCOME_DURATION' | 'SET_INCOME_START_DATE' | 'SET_CURRENCY' | 'DISMISS_WARNING' | 'UPDATE_ACHIEVEMENTS' | 'ADD_GOAL' | 'UPDATE_GOAL' | 'DELETE_GOAL';
     payload: any;
     id: string; // Unique ID for the action
     timestamp: number;
@@ -102,12 +104,14 @@ const saveData = async (key: string, value: any) => {
 };
 
 export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-
+    const { user } = useAuth();
+    const { showAlert } = useAlert();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [trash, setTrash] = useState<Transaction[]>([]);
     const [categories, setCategories] = useState<Category[]>(defaultCategories);
     const [budget, setBudgetState] = useState(0);
     const [income, setIncomeState] = useState(0);
+    const [incomeDuration, setIncomeDurationState] = useState(12);
     const [incomeStartDate, setIncomeStartDateState] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [currency, setCurrencyState] = useState('EUR');
@@ -158,9 +162,20 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             let monthIncome = 0;
 
-            // Add static income if valid and within tracking period
+            // Add static income if valid and within tracking period AND duration
             if (trackingStartDate && monthStart >= trackingStartDate && income > 0) {
-                monthIncome += income;
+                // Check duration
+                const durationMonths = incomeDuration || 12;
+                const endOfIncome = addMonths(trackingStartDate, durationMonths);
+                // The income stops AFTER the duration. E.g. 1 month duration = income in start month only.
+                // So if monthStart < endOfIncome.
+                // Ex: Start Jan 1. Duration 1 month. endOfIncome = Feb 1.
+                // Jan 1 < Feb 1 (True) -> Add Income.
+                // Feb 1 < Feb 1 (False) -> No Income. Correct.
+
+                if (monthStart < endOfIncome) {
+                    monthIncome += income;
+                }
             }
 
             const incomeTx = transactions.filter(t =>
@@ -245,7 +260,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
 
         return finalBreakdown;
-    }, [income, incomeStartDate, transactions]);
+    }, [income, incomeStartDate, transactions, incomeDuration]);
 
     const distributeFundsToGoals = useCallback(() => {
         const goalsByYear: Record<number, SavingsGoal[]> = {};
@@ -271,7 +286,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // If user set start date 2025, and current is 2030, we must sim 2025..2030.
         // If user set start date 2026 (future?), handle gracefully (sim 2026..?).
         // Usually startdate <= now.
-        // Also check if any goals exist BEFORE the start date? 
+        // Also check if any goals exist BEFORE the start date?
         // If a goal is in 2024 but start date is 2025 -> Goal can't be funded. Correct.
 
         // Loop range: startYear to max(currentYear, maxGoalYear)
@@ -346,7 +361,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         goals.forEach(g => {
             const y = g.year || new Date().getFullYear();
             if (y < startYear || y > endYear) {
-                // Reset them or keep them? 
+                // Reset them or keep them?
                 // If year < startYear, 0 funds.
                 // If year > endYear, implies loop didn't reach? but endYear depends on maxGoalYear.
                 if (y < startYear) {
@@ -365,17 +380,14 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // There shouldn't be duplicates.
 
         // Sorting: `allDistributedGoals` order is by year then priority (roughly).
-        // Original `goals` order might be different. 
+        // Original `goals` order might be different.
         // Order shouldn't matter for state, but nice to keep consistent.
-
-        // Only update if changes
-        const orderChanged = allDistributedGoals.length === goals.length && allDistributedGoals.some((g, i) => g.id !== goals[i]?.id);
 
         // Wait, `allDistributedGoals` size check.
         // If goals had duplicates or errors, length might differ.
         // Seems safe.
 
-        if (hasChanges || orderChanged) {
+        if (hasChanges) {
             setGoals(allDistributedGoals);
             saveData('goals', allDistributedGoals);
         }
@@ -405,11 +417,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
     const currencySymbol = useMemo(() => getCurrencySymbol(currency), [currency]);
-
-
-
-
-    const { user } = useAuth();
 
 
 
@@ -470,6 +477,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         break;
                     case 'SET_INCOME':
                         ({ error } = await supabase.from('user_settings').upsert({ key: 'income', value: action.payload.toString(), user_id: user.id }));
+                        break;
+                    case 'SET_INCOME_DURATION':
+                        ({ error } = await supabase.from('user_settings').upsert({ key: 'incomeDuration', value: action.payload.toString(), user_id: user.id }));
                         break;
                     case 'SET_INCOME_START_DATE':
                         if (action.payload) {
@@ -994,21 +1004,19 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     }
                 }
 
-                const { data: settings, error: settingsError } = await supabase.from('user_settings').select('*').eq('user_id', user.id);
-                if (settings && !settingsError) {
+                // Load Settings
+                const { data: settings } = await supabase.from('user_settings').select('key, value').eq('user_id', user.id);
+                if (settings) {
                     settings.forEach(s => {
-                        if (s.key === 'budget') { setBudgetState(parseFloat(s.value)); saveData('budget', s.value); }
-                        if (s.key === 'income') { setIncomeState(parseFloat(s.value)); saveData('income', s.value); }
-                        if (s.key === 'incomeStartDate') { setIncomeStartDateState(s.value); saveData('incomeStartDate', s.value); }
-                        if (s.key === 'currency') { setCurrencyState(s.value); saveData('currency', s.value); }
+                        if (s.key === 'budget') setBudgetState(parseFloat(s.value));
+                        if (s.key === 'income') setIncomeState(parseFloat(s.value));
+                        if (s.key === 'incomeDuration') setIncomeDurationState(parseInt(s.value) || 12);
+                        if (s.key === 'incomeStartDate') setIncomeStartDateState(s.value);
+                        if (s.key === 'currency') setCurrencyState(s.value);
                         if (s.key === 'dismissedWarnings') {
                             try {
-                                const parsed = JSON.parse(s.value);
-                                setDismissedWarnings(parsed);
-                                saveData('dismissedWarnings', parsed);
-                            } catch (e) {
-                                console.error('Failed to parse dismissedWarnings from Supabase', e);
-                            }
+                                setDismissedWarnings(JSON.parse(s.value));
+                            } catch (e) { console.error("Error parsing dismissedWarnings", e); }
                         }
                     });
                 }
@@ -1032,26 +1040,11 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const { data: remoteGoals, error: goalError } = await supabase.from('savings_goals').select('*').eq('user_id', user.id);
                 if (remoteGoals && !goalError) {
                     const parsedGoals = remoteGoals.map(fromSupabaseSavingsGoal);
-                    // Merge logic: remote overrides local if ID matches? Or simple replace?
-                    // Goals are modified by 'distributeFundsToGoals' LOCALLY often (currentAmount).
-                    // BUT structural changes (name, target) come from user.
-                    // 'currentAmount' is a derived value from local calculation mostly, but if we sync it?
-                    // Actually, 'currentAmount' should probably be re-calculated locally based on rules.
-                    // However, we sync it so 'other' devices see it.
-                    // Let's assume Remote acts as source of truth for definitions.
 
-                    // We need to be careful not to overwrite a just-created goal that hasn't synced yet.
-                    // But queue logic handles pending adds.
-
-                    // Let's merge:
-                    // If local has a goal not in remote -> keep if in queue?
-                    // Actually simple replacement + queue handling (like transactions) is best.
-
-                    // For goals, let's trust remote if present.
-                    // And append pending creations.
-
+                    // Simple merge for now as per previous logic
                     let activeGoals = parsedGoals;
 
+                    // Re-apply pending queue operations
                     if (currentQueue.length > 0) {
                         const pendingGoalAdds = currentQueue.filter(a => a.type === 'ADD_GOAL').map(a => a.payload as SavingsGoal);
                         const uniquePending = pendingGoalAdds.filter(p => !activeGoals.some(r => r.id === p.id));
@@ -1081,6 +1074,61 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setLoading(false);
         }
     }, [user, processRecurringTransactions]);
+
+    const setIncome = useCallback((amount: number) => {
+        setIncomeState(amount);
+        saveData('income', amount);
+        if (user) {
+            if (isOffline) {
+                addToQueue({ type: 'SET_INCOME', payload: amount });
+            } else {
+                supabase.from('user_settings').upsert({ key: 'income', value: amount.toString(), user_id: user.id }).then(({ error }) => {
+                    if (error) addToQueue({ type: 'SET_INCOME', payload: amount });
+                });
+            }
+        }
+    }, [user, isOffline, addToQueue]);
+
+    const setIncomeDuration = useCallback((months: number) => {
+        setIncomeDurationState(months);
+        saveData('incomeDuration', months);
+        if (user) {
+            if (isOffline) {
+                addToQueue({ type: 'SET_INCOME_DURATION', payload: months });
+            } else {
+                supabase.from('user_settings').upsert({ key: 'incomeDuration', value: months.toString(), user_id: user.id }).then(({ error }) => {
+                    if (error) addToQueue({ type: 'SET_INCOME_DURATION', payload: months });
+                });
+            }
+        }
+    }, [user, isOffline, addToQueue]);
+
+    const setIncomeStartDate = useCallback((date: string | null) => {
+        setIncomeStartDateState(date);
+        if (date) {
+            saveData('incomeStartDate', date);
+            if (user) {
+                if (isOffline) {
+                    addToQueue({ type: 'SET_INCOME_START_DATE', payload: date });
+                } else {
+                    supabase.from('user_settings').upsert({ key: 'incomeStartDate', value: date, user_id: user.id }).then(({ error }) => {
+                        if (error) addToQueue({ type: 'SET_INCOME_START_DATE', payload: date });
+                    });
+                }
+            }
+        } else {
+            AsyncStorage.removeItem('incomeStartDate');
+            if (user) {
+                if (isOffline) {
+                    addToQueue({ type: 'SET_INCOME_START_DATE', payload: null });
+                } else {
+                    supabase.from('user_settings').delete().eq('key', 'incomeStartDate').eq('user_id', user.id).then(({ error }) => {
+                        if (error) addToQueue({ type: 'SET_INCOME_START_DATE', payload: null });
+                    });
+                }
+            }
+        }
+    }, [user, isOffline, addToQueue]);
 
     useEffect(() => {
         loadData();
@@ -1335,7 +1383,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // Prevent duplicates
         const exists = categories.some(c => c.name.toLowerCase() === name.trim().toLowerCase());
         if (exists) {
-            Alert.alert('Error', 'Category already exists');
+            showAlert('Error', 'Category already exists');
             return;
         }
 
@@ -1356,7 +1404,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, isOffline, addToQueue]);
+    }, [user, isOffline, addToQueue, categories, showAlert]);
 
     const addGoal = useCallback((goalData: Omit<SavingsGoal, 'id' | 'currentAmount' | 'isCompleted'>) => {
         const { priority, year, startMonth, ...rest } = goalData;
@@ -1399,15 +1447,15 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
 
 
-        const updatedGoal = goals.find(g => g.id === id); // Old state? No, we need new state.
+        const goalToUpdate = goals.find(g => g.id === id); // Old state? No, we need new state.
         // Actually, state updates are async in React batching but `updated` in callback is correct.
-        // We can't easily access the *result* of the setGoals callback outside. 
+        // We can't easily access the *result* of the setGoals callback outside.
         // Let's reconstruct or grab from the functional update?
 
         // Better: Compute updated list first.
-        const goalToUpdate = goals.find(g => g.id === id);
-        if (goalToUpdate) {
-            const finalGoal = { ...goalToUpdate, ...updates };
+        const goalToUpdateFinal = goals.find(g => g.id === id);
+        if (goalToUpdateFinal) {
+            const finalGoal = { ...goalToUpdateFinal, ...updates };
             if (user) {
                 if (isOffline) {
                     addToQueue({ type: 'UPDATE_GOAL', payload: finalGoal });
@@ -1515,55 +1563,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     }, [user, isOffline, addToQueue]);
 
-    const setIncome = useCallback((amount: number) => {
-        setIncomeState(amount);
-        AsyncStorage.setItem('income', amount.toString());
-        if (user) {
-            if (isOffline) {
-                addToQueue({ type: 'SET_INCOME', payload: amount });
-            } else {
-                supabase.from('user_settings').upsert({ key: 'income', value: amount.toString(), user_id: user.id }).then(({ error }) => {
-                    if (error) {
-                        console.error('Supabase set income error', error);
-                        addToQueue({ type: 'SET_INCOME', payload: amount });
-                    }
-                });
-            }
-        }
-    }, [user, isOffline, addToQueue]);
 
-    const setIncomeStartDate = useCallback((date: string | null) => {
-        setIncomeStartDateState(date);
-        if (date) {
-            AsyncStorage.setItem('incomeStartDate', date);
-            if (user) {
-                if (isOffline) {
-                    addToQueue({ type: 'SET_INCOME_START_DATE', payload: date });
-                } else {
-                    supabase.from('user_settings').upsert({ key: 'incomeStartDate', value: date, user_id: user.id }).then(({ error }) => {
-                        if (error) {
-                            console.error('Supabase set incomeStartDate error', error);
-                            addToQueue({ type: 'SET_INCOME_START_DATE', payload: date });
-                        }
-                    });
-                }
-            }
-        } else {
-            AsyncStorage.removeItem('incomeStartDate');
-            if (user) {
-                if (isOffline) {
-                    addToQueue({ type: 'SET_INCOME_START_DATE', payload: null });
-                } else {
-                    supabase.from('user_settings').delete().eq('key', 'incomeStartDate').eq('user_id', user.id).then(({ error }) => {
-                        if (error) {
-                            console.error('Supabase delete incomeStartDate error', error);
-                            addToQueue({ type: 'SET_INCOME_START_DATE', payload: null });
-                        }
-                    });
-                }
-            }
-        }
-    }, [user, isOffline, addToQueue]);
 
     const setCurrency = useCallback(async (cur: string) => {
         if (cur === currency) return;
@@ -1618,7 +1618,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 ]);
 
                 // Update transactions in Supabase
-                // Note: This might be heavy for many transactions. 
+                // Note: This might be heavy for many transactions.
                 // Ideally, we'd do this in a batch or backend function, but for now we'll do client-side loop or batch upsert.
                 // Batch upsert is better.
                 const { error: txError } = await supabase.from('transactions').upsert(
@@ -1632,12 +1632,12 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 // If offline, queue the currency change setting
                 addToQueue({ type: 'SET_CURRENCY', payload: cur });
             } else {
-                Alert.alert('Error', 'Failed to update currency. Please try again.');
+                showAlert('Error', 'Failed to update currency. Please try again.');
             }
         } finally {
             setLoading(false);
         }
-    }, [currency, budget, income, transactions, trash, user, isOffline, addToQueue]);
+    }, [currency, budget, income, transactions, trash, user, isOffline, addToQueue, showAlert]);
 
     const resetCategories = useCallback(() => {
         setCategories(defaultCategories);
@@ -1719,14 +1719,14 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     ]);
                 }
             }
-        } catch (e) {
-            console.error('Purge failed', e);
-            Alert.alert('Error', 'Failed to reset data');
-            throw e; // Re-throw so caller knows
+        } catch (error) {
+            console.error('Failed to reset', error);
+            showAlert('Error', 'Failed to reset data');
+            throw error; // Re-throw so caller knows
         } finally {
             setLoading(false);
         }
-    }, [user, isOffline]);
+    }, [user, isOffline, showAlert]);
 
 
 
@@ -1741,6 +1741,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 categories,
                 budget,
                 income,
+                incomeDuration,
                 incomeStartDate,
                 addTransaction,
                 editTransaction,
@@ -1754,6 +1755,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 deleteCategory,
                 setBudget,
                 setIncome,
+                setIncomeDuration,
                 setIncomeStartDate,
                 purgeData,
                 loading,

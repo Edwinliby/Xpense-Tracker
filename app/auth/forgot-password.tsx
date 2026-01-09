@@ -1,10 +1,11 @@
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { useAlert } from '@/context/AlertContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ForgotPassword() {
@@ -13,10 +14,11 @@ export default function ForgotPassword() {
     const { forgotPassword } = useAuth();
     const { colors } = useTheme();
     const router = useRouter();
+    const { showAlert } = useAlert();
 
     const handleReset = async () => {
         if (!email) {
-            Alert.alert('Error', 'Please enter your email');
+            showAlert('Error', 'Please enter your email');
             return;
         }
         setLoading(true);
@@ -24,9 +26,9 @@ export default function ForgotPassword() {
         setLoading(false);
 
         if (error) {
-            Alert.alert('Error', error.message);
+            showAlert('Error', error.message);
         } else {
-            Alert.alert('Success', 'Password reset instructions have been sent to your email.', [
+            showAlert('Success', 'Password reset instructions have been sent to your email.', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
         }

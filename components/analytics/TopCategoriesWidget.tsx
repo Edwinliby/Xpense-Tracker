@@ -1,4 +1,4 @@
-import { useStyles } from '@/constants/Styles';
+
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, isWithinInterval, startOfMonth } from 'date-fns';
@@ -8,7 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 export const TopCategoriesWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
-    const Styles = useStyles();
+
     const { transactions, categories, currencySymbol } = useExpense();
 
     const topCategoriesData = useMemo(() => {
@@ -48,12 +48,11 @@ export const TopCategoriesWidget: React.FC<{ targetDate: Date }> = ({ targetDate
     return (
         <View style={[
             styles.container,
-            Styles.shadow,
             {
                 backgroundColor: Colors.surface,
                 shadowColor: Colors.shadow,
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.05)'
+                borderWidth: .5,
+                borderColor: Colors.border
             }
         ]}>
             <Text style={[styles.title, { color: Colors.text }]}>Top Categories</Text>
@@ -95,9 +94,8 @@ export const TopCategoriesWidget: React.FC<{ targetDate: Date }> = ({ targetDate
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 24,
+        padding: 20,
         marginHorizontal: 20,
-        marginBottom: 24,
     },
     title: {
         fontSize: 17,

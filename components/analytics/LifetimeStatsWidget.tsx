@@ -125,8 +125,7 @@ export const LifetimeStatsWidget: React.FC = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: 10,
-        marginBottom: 24,
+        marginBottom: 18,
         paddingHorizontal: 20, // Align with other widgets
     },
     banner: {
@@ -134,9 +133,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingVertical: 16,
-        paddingHorizontal: 24,
+        paddingHorizontal: 10,
         borderRadius: 20,
-        borderWidth: 1,
+        borderWidth: .5,
     },
     section: {
         flex: 1,

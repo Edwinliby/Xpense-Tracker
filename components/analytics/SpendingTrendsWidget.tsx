@@ -1,4 +1,4 @@
-import { useStyles } from '@/constants/Styles';
+
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, format, isWithinInterval, startOfMonth, subMonths } from 'date-fns';
@@ -8,7 +8,7 @@ import { LineChart, lineDataItem } from 'react-native-gifted-charts';
 
 export const SpendingTrendsWidget: React.FC<{ targetDate: Date, width?: number }> = ({ targetDate, width }) => {
     const Colors = useThemeColor();
-    const Styles = useStyles();
+
     const { transactions, currencySymbol } = useExpense();
 
 
@@ -48,12 +48,11 @@ export const SpendingTrendsWidget: React.FC<{ targetDate: Date, width?: number }
     return (
         <View style={[
             styles.container,
-            Styles.shadow,
             {
                 backgroundColor: Colors.surface,
                 shadowColor: Colors.shadow,
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.05)'
+                borderWidth: .5,
+                borderColor: Colors.border
             }
         ]}>
             <View style={styles.header}>
@@ -142,9 +141,8 @@ export const SpendingTrendsWidget: React.FC<{ targetDate: Date, width?: number }
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 24,
+        padding: 20,
         marginHorizontal: 20,
-        marginBottom: 32,
     },
     header: {
         flexDirection: 'row',

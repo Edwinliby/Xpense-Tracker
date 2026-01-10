@@ -44,7 +44,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement,
                 style={[
                     styles.container,
                     {
-                        borderColor: isUnlocked ? categoryColor : 'rgba(255,255,255,0.05)',
+                        borderColor: isUnlocked ? categoryColor : 'rgba(230, 230, 230, 0.5)',
                         borderWidth: isUnlocked ? 1 : 1,
                         opacity: isUnlocked ? 1 : 0.6
                     }
@@ -121,11 +121,6 @@ const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
         overflow: 'hidden',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-        elevation: 4,
     },
     innerContent: {
         padding: 20,
@@ -147,11 +142,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-        elevation: 3,
     },
     content: {
         flex: 1,

@@ -13,7 +13,7 @@ import { useExpense } from '@/store/expenseStore';
 import { format, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AnalyticsScreen() {
@@ -26,12 +26,10 @@ export default function AnalyticsScreen() {
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
 
+    const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'categories'>('overview');
+
     // Responsive calculations
     const containerWidth = Math.min(width, 1200);
-    const availableGridWidth = isDesktop ? (containerWidth - 40) : width;
-    const gap = 24;
-    // Left Column Flex: 2, Right: 1. Total flex: 3.
-    const leftColumnWidth = isDesktop ? ((availableGridWidth - gap) * (2 / 3)) : width;
 
     // Calculate available months from transactions
     const availableMonths = React.useMemo(() => {
@@ -70,12 +68,41 @@ export default function AnalyticsScreen() {
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
-        // Maybe reset to current month on refresh? 
-        // setSelectedDate(new Date());
         setTimeout(() => {
             setRefreshing(false);
         }, 1000);
     }, []);
+
+    // Tab Button Component
+    const TabButton = ({ id, label }: { id: typeof activeTab, label: string }) => {
+        const isActive = activeTab === id;
+        return (
+            <TouchableOpacity
+                onPress={() => setActiveTab(id)}
+                style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: isActive ? Colors.surface : 'transparent',
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: isActive ? Colors.border : 'transparent',
+                    shadowColor: isActive ? Colors.shadow : 'transparent',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isActive ? 0.05 : 0,
+                    shadowRadius: 4,
+                    elevation: isActive ? 2 : 0,
+                }}
+            >
+                <Text style={{
+                    fontFamily: isActive ? 'Geist-Bold' : 'Geist-Medium',
+                    color: isActive ? Colors.primary : Colors.textSecondary,
+                    fontSize: 14,
+                }}>{label}</Text>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={Styles.container}>
@@ -92,7 +119,7 @@ export default function AnalyticsScreen() {
                 </View>
 
                 {/* Month Selector */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, padding: 6, paddingHorizontal: 12, borderRadius: 100, borderWidth: 1, borderColor: Colors.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, padding: 6, paddingHorizontal: 8, borderRadius: 100, borderWidth: .5, borderColor: Colors.border }}>
                     <TouchableOpacity
                         onPress={goToPreviousMonth}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -115,6 +142,25 @@ export default function AnalyticsScreen() {
                 </View>
             </View>
 
+            <LifetimeStatsWidget />
+
+            {/* Tab Selector */}
+            <View style={{
+                flexDirection: 'row',
+                backgroundColor: Colors.surfaceHighlight,
+                marginHorizontal: 20,
+                marginBottom: 4,
+                padding: 4,
+                borderRadius: 16,
+                borderWidth: .5,
+                borderColor: Colors.border,
+                gap: 4
+            }}>
+                <TabButton id="overview" label="Overview" />
+                <TabButton id="trends" label="Trends" />
+                <TabButton id="categories" label="Categories" />
+            </View>
+
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -124,81 +170,40 @@ export default function AnalyticsScreen() {
                         tintColor={Colors.primary}
                     />
                 }
-                contentContainerStyle={{ paddingBottom: 40 }}
+                contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
             >
-                <View style={isDesktop ? styles.desktopGrid : styles.mobileStack}>
-                    {/* LEFT COLUMN (Desktop: Charts) */}
-                    <View style={isDesktop ? styles.leftColumn : styles.column}>
-                        {/* Spending Trends */}
-                        <SpendingTrendsWidget targetDate={selectedDate} width={isDesktop ? leftColumnWidth - 48 : undefined} />
+                {/* Content based on Tab */}
 
-                        {/* Day of Week */}
-                        <DayOfWeekWidget targetDate={selectedDate} width={isDesktop ? leftColumnWidth - 48 : undefined} />
-
-                        {/* Category Pie Chart */}
-                        <CategoryPieChartWidget targetDate={selectedDate} />
+                {/* OVERVIEW TAB */}
+                {activeTab === 'overview' && (
+                    <View style={{ gap: 24 }}>
+                        <View style={{ gap: 24 }}>
+                            {/* Health & KPIs */}
+                            <FinancialHealthWidget targetDate={selectedDate} />
+                            <QuickInsightsWidget targetDate={selectedDate} />
+                            <FinancialKPIsWidget targetDate={selectedDate} />
+                            <MonthComparisonWidget targetDate={selectedDate} />
+                        </View>
                     </View>
+                )}
 
-                    {/* RIGHT COLUMN (Desktop: KPIs & Lists) */}
-                    <View style={isDesktop ? styles.rightColumn : styles.column}>
-                        {/* Lifetime Stats */}
-                        <LifetimeStatsWidget />
+                {/* TRENDS TAB */}
+                {activeTab === 'trends' && (
+                    <View style={{ gap: 24 }}>
+                        <SpendingTrendsWidget targetDate={selectedDate} width={isDesktop ? containerWidth - 40 : undefined} />
+                        <DayOfWeekWidget targetDate={selectedDate} width={isDesktop ? containerWidth - 40 : undefined} />
+                    </View>
+                )}
 
-                        {/* Financial Health Score */}
-                        <FinancialHealthWidget targetDate={selectedDate} />
-
-                        {/* Quick Insights */}
-                        <QuickInsightsWidget targetDate={selectedDate} />
-
-                        {/* Financial KPIs */}
-                        <FinancialKPIsWidget targetDate={selectedDate} />
-
-                        {/* Month Comparison */}
-                        <MonthComparisonWidget targetDate={selectedDate} />
-
-                        {/* Top Categories */}
+                {/* CATEGORIES TAB */}
+                {activeTab === 'categories' && (
+                    <View style={{ gap: 24 }}>
+                        <CategoryPieChartWidget targetDate={selectedDate} />
                         <TopCategoriesWidget targetDate={selectedDate} />
                     </View>
-                </View>
+                )}
 
-                {/* Mobile: Original Order or specific order? 
-                    On Mobile, the grid approach here splits them. 
-                    If we want to preserve the EXACT original order on mobile, we'd need to conditionally render the whole tree.
-                    Or, accepts that the order might slightly change (Charts first, then Stats).
-                    The proposed grid puts Charts available in Left Column (top on mobile) and Stats in Right (bottom on mobile).
-                    Actually, let's check styles.mobileStack = column.
-                    So Left Column renders first, then Right Column.
-                    This means Charts are now at the top, Stats at the bottom.
-                    Original was mixed.
-                    Let's accept this re-ordering as it's cleaner, or duplicate for mobile if strictly required.
-                    Re-ordering is usually fine for "Improve UI".
-                */}
-
-                {!isDesktop && <View style={{ height: 100 }} />}
             </ScrollView>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    desktopGrid: {
-        flexDirection: 'row',
-        gap: 2,
-        paddingHorizontal: 20,
-        alignItems: 'flex-start',
-    },
-    mobileStack: {
-        flexDirection: 'column-reverse',
-    },
-    leftColumn: {
-        flex: 2,
-        gap: 0,
-    },
-    rightColumn: {
-        flex: 1.5,
-        gap: 0,
-    },
-    column: {
-        width: '100%',
-    },
-});

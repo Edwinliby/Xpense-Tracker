@@ -41,13 +41,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <AlertProvider>
-          <ExpenseProvider>
-            <ThemeProvider>
+        <ThemeProvider>
+          <AlertProvider>
+            <ExpenseProvider>
               <AppContent />
-            </ThemeProvider>
-          </ExpenseProvider>
-        </AlertProvider>
+            </ExpenseProvider>
+          </AlertProvider>
+        </ThemeProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
@@ -124,6 +124,7 @@ function AppContent() {
           <Stack.Screen name="search" options={{ headerShown: false, animation: 'ios_from_right' }} />
 
           <Stack.Screen name="trash" options={{ headerShown: false, animation: 'ios_from_right' }} />
+          <Stack.Screen name="export" options={{ headerShown: false, animation: 'ios_from_right' }} />
         </Stack>
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       </WebContainer>

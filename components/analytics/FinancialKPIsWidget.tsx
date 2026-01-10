@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
@@ -37,119 +38,115 @@ export const FinancialKPIsWidget: React.FC<{ targetDate: Date }> = ({ targetDate
 
         return [
             {
-                label: 'Savings Rate',
+                label: 'Savings',
                 value: `${savingsRate.toFixed(1)}%`,
                 icon: PiggyBank,
                 color: savingsRate >= 20 ? Colors.success : savingsRate >= 10 ? Colors.warning : Colors.danger,
-                bg: savingsRate >= 20 ? Colors.success : savingsRate >= 10 ? Colors.warning : Colors.danger,
+                bgGradient: savingsRate >= 20 ? [Colors.success + '20', Colors.success + '05'] : savingsRate >= 10 ? [Colors.warning + '20', Colors.warning + '05'] : [Colors.danger + '20', Colors.danger + '05'],
             },
             {
                 label: 'Daily Avg',
                 value: `${currencySymbol}${burnRate.toFixed(0)}`,
                 icon: Activity,
                 color: Colors.primary,
-                bg: Colors.primary,
+                bgGradient: [Colors.primary + '20', Colors.primary + '05'],
             },
             {
                 label: 'Transactions',
                 value: String(transactionCount),
                 icon: Banknote,
                 color: Colors.text,
-                bg: Colors.textSecondary,
+                bgGradient: [Colors.textSecondary + '20', Colors.textSecondary + '05'],
             },
             {
-                label: budget > 0 ? 'Remaining Budget' : 'Remaining Income',
+                label: 'Remaining',
                 value: `${currencySymbol}${budgetRemaining.toFixed(0)}`,
                 icon: Target,
                 color: budgetRemaining >= 0 ? Colors.success : Colors.danger,
-                bg: budgetRemaining >= 0 ? Colors.success : Colors.danger,
+                bgGradient: budgetRemaining >= 0 ? [Colors.success + '20', Colors.success + '05'] : [Colors.danger + '20', Colors.danger + '05'],
             },
         ];
     }, [transactions, budget, income, currencySymbol, Colors, targetDate]);
 
     return (
-        <View style={styles.container}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Financial Snapshot</Text>
-
-            <View style={styles.grid}>
-                {kpis.map((kpi, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.card,
-                            Styles.shadow,
-                            {
-                                backgroundColor: Colors.surface,
-                                shadowColor: Colors.shadow,
-                                borderWidth: 1,
-                                borderColor: 'rgba(255,255,255,0.05)'
-                            }
-                        ]}
+        <View style={styles.grid}>
+            {kpis.map((kpi, index) => (
+                <View
+                    key={index}
+                    style={[
+                        styles.cardContainer,
+                        Styles.shadow,
+                        {
+                            backgroundColor: Colors.surface,
+                            shadowColor: Colors.shadow,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.05)'
+                        }
+                    ]}
+                >
+                    <LinearGradient
+                        colors={kpi.bgGradient as [string, string]}
+                        style={styles.cardGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
                     >
-                        <View style={[styles.iconContainer, { backgroundColor: kpi.bg + '15' }]}>
+                        <View style={[styles.iconContainer, { backgroundColor: kpi.color + '15' }]}>
                             {React.createElement(kpi.icon, { size: 18, color: kpi.color })}
                         </View>
                         <View>
-                            <Text style={[styles.value, { color: Colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                            <Text style={[styles.value, { color: kpi.color }]} numberOfLines={1} adjustsFontSizeToFit>
                                 {kpi.value}
                             </Text>
                             <Text style={[styles.label, { color: Colors.textSecondary }]} numberOfLines={1}>
                                 {kpi.label}
                             </Text>
                         </View>
-                    </View>
-                ))}
-            </View>
+                    </LinearGradient>
+                </View>
+            ))}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        marginBottom: 24, // Reduced from 32
-    },
-    sectionTitle: {
-        fontSize: 15, // Reduced from 17
-        fontFamily: 'Geist-Bold',
-        marginBottom: 18, // Reduced from 20
-        marginHorizontal: 20,
-        letterSpacing: 0.2,
-    },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         paddingHorizontal: 20,
-        gap: 12, // Reduced gap from 16
+        gap: 12,
     },
-    card: {
+    cardContainer: {
         width: '48%',
-        flexGrow: 1,
-        padding: 14, // Reduced from 20
-        borderRadius: 20, // Reduced from 24
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        height: 100, // Reduced from 140
+        borderRadius: 18,
+        overflow: 'hidden',
+    },
+    cardGradient: {
+        flex: 1,
+        padding: 16,
+        paddingVertical: 12, // slightly tighter vertical padding
+        flexDirection: 'row', // Keeping row alignment as per user pref
+        alignItems: 'center',
+        gap: 12,
+        justifyContent: 'flex-start', // Ensure content is aligned start
     },
     iconContainer: {
-        width: 36, // Reduced from 48
-        height: 36,
-        borderRadius: 12, // Reduced from 16
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         justifyContent: 'center',
         alignItems: 'center',
-        alignSelf: 'flex-start',
-        marginBottom: 8, // Reduced from 16
+        alignSelf: 'center', // Center vertically in row
     },
     value: {
-        fontSize: 18, // Reduced from 22
+        fontSize: 18,
         fontFamily: 'Geist-Bold',
-        marginBottom: 2, // Reduced from 4
+        marginBottom: 2,
         letterSpacing: -0.5,
     },
     label: {
-        fontSize: 11, // Reduced from 12
+        fontSize: 11,
         fontFamily: 'Geist-Medium',
         opacity: 0.7,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0.2,
     },
 });

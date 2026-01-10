@@ -36,6 +36,8 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onLongPress }) => {
             style={[styles.container, {
                 shadowColor: goal.color,
                 backgroundColor: Colors.surface,
+                borderWidth: .5,
+                borderColor: goal.color,
             }]}
         >
             <View style={styles.cardContent}>
@@ -105,10 +107,6 @@ const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
         marginVertical: 8,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 16,
-        elevation: 6, // Android shadow
     },
     cardContent: {
         padding: 20,

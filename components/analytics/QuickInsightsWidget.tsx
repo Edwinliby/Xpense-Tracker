@@ -120,70 +120,64 @@ export const QuickInsightsWidget: React.FC<{ targetDate: Date }> = ({ targetDate
 
 
     return (
-        <View style={styles.container}>
-            <View
-                // @ts-ignore - React Native Web supports these props but types might not
-                onMouseDown={handleMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onMouseLeave={onMouseUp}
-                style={{ cursor: isDragging ? 'grabbing' : 'grab' } as any}
+        <View
+            // @ts-ignore - React Native Web supports these props but types might not
+            onMouseDown={handleMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseUp}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' } as any}
 
+        >
+            <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+                style={{ userSelect: 'none' } as any} // Prevent text selection while dragging
             >
-                <ScrollView
-                    ref={scrollViewRef}
-                    horizontal
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
-                    style={{ userSelect: 'none' } as any} // Prevent text selection while dragging
-                >
-                    {insights.map((item) => (
-                        <View
-                            key={item.id}
-                            style={[
-                                styles.cardContainer,
-                                Styles.shadow,
-                                {
-                                    backgroundColor: Colors.surface,
-                                    shadowColor: Colors.shadow,
-                                    borderColor: 'rgba(255,255,255,0.05)',
-                                    borderWidth: 1
-                                }
-                            ]}
+                {insights.map((item) => (
+                    <View
+                        key={item.id}
+                        style={[
+                            styles.cardContainer,
+                            Styles.shadow,
+                            {
+                                backgroundColor: Colors.surface,
+                                shadowColor: Colors.shadow,
+                                borderColor: 'rgba(255,255,255,0.05)',
+                                borderWidth: 1
+                            }
+                        ]}
+                    >
+                        <LinearGradient
+                            colors={item.bgGradient as [string, string]}
+                            style={styles.cardGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
                         >
-                            <LinearGradient
-                                colors={item.bgGradient as [string, string]}
-                                style={styles.cardGradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                            >
-                                <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-                                    {React.createElement(item.icon, { size: 18, color: item.color })}
-                                </View>
-                                <View>
-                                    <Text style={[styles.cardTitle, { color: Colors.textSecondary }]}>{item.title}</Text>
-                                    <Text style={[styles.cardValue, { color: Colors.text }]}>{item.value}</Text>
-                                    <Text style={[styles.cardSubtitle, { color: Colors.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
-                                </View>
-                            </LinearGradient>
-                        </View>
-                    ))}
-                </ScrollView>
-            </View>
+                            <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
+                                {React.createElement(item.icon, { size: 18, color: item.color })}
+                            </View>
+                            <View>
+                                <Text style={[styles.cardTitle, { color: Colors.textSecondary }]}>{item.title}</Text>
+                                <Text style={[styles.cardValue, { color: Colors.text }]}>{item.value}</Text>
+                                <Text style={[styles.cardSubtitle, { color: Colors.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
+                            </View>
+                        </LinearGradient>
+                    </View>
+                ))}
+            </ScrollView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        marginBottom: 24, // Reduced from 32
-    },
     scrollContent: {
         paddingHorizontal: 20,
-        gap: 12, // Reduced from 16
-        paddingBottom: 4,
+        gap: 12,
     },
     cardContainer: {
         width: 140, // Reduced from 170

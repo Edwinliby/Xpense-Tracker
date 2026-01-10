@@ -32,11 +32,15 @@ export const SettingsHeroCard = ({ children, style }: { children: React.ReactNod
     const Colors = useThemeColor();
     // Use primary gradient if available, or just a nice highlight background
     return (
-        <View style={[styles.heroCardContainer, { shadowColor: Colors.primary }]}>
+        <View style={[styles.heroCardContainer, {
+            shadowColor: Colors.primary,
+            borderColor: Colors.border,
+            borderWidth: .5
+        }]}>
             <LinearGradient
-                colors={(Colors.primaryGradient || [Colors.primary, Colors.primaryDark]) as [string, string, ...string[]]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                colors={(Colors.settingGradient || [Colors.primary, Colors.primaryDark]) as [string, string, ...string[]]}
+                start={{ x: 1, y: 0 }}
+                end={{ x: 0, y: 1 }}
                 style={[styles.heroCard, style]}
             >
                 {children}
@@ -124,21 +128,13 @@ const styles = StyleSheet.create({
     card: {
         borderRadius: 24, // Increased radius
         padding: 20,
-        borderWidth: 1,
+        borderWidth: .5,
         overflow: 'hidden',
         marginBottom: 4,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 3,
     },
     heroCardContainer: {
         marginBottom: 4,
         borderRadius: 24,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
-        elevation: 8,
     },
     heroCard: {
         borderRadius: 24,
@@ -185,7 +181,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
         paddingHorizontal: 8,
-        marginTop: 32,
+        marginTop: 22,
     },
     sectionHeader: {
         fontSize: 18, // Much larger

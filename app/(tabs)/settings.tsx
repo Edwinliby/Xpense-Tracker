@@ -10,12 +10,16 @@ import { useTheme } from '@/context/ThemeContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { debounce } from 'lodash';
 import * as Icons from 'lucide-react-native';
-import { Calendar, Monitor, Moon, Sun, X } from 'lucide-react-native';
+import {
+    Calendar,
+    Monitor,
+    Moon,
+    Sun,
+    X
+} from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -158,30 +162,6 @@ export default function SettingsScreen() {
         );
     };
 
-    const handleExport = async () => {
-        try {
-            const csvHeader = 'Date,Type,Category,Amount,Description,Paid By,Friend Payment\n';
-            const csvRows = transactions.map(t => {
-                const cleanDesc = t.description.replace(/,/g, ' ');
-                return `${t.date},${t.type},${t.category},${t.amount},${cleanDesc},${t.paidBy || ''},${t.isFriendPayment ? 'Yes' : 'No'}`;
-            }).join('\n');
-
-            const csvContent = csvHeader + csvRows;
-            const fileUri = (FileSystem as any).documentDirectory + 'transactions.csv';
-
-            await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: 'utf8' });
-
-            if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(fileUri);
-            } else {
-                showAlert('Error', 'Sharing is not available on this device');
-            }
-        } catch (error) {
-            console.error('Export failed:', error);
-            showAlert('Error', 'Failed to export data');
-        }
-    };
-
     const { signOut } = useAuth();
 
     const handleSignOut = () => {
@@ -262,12 +242,10 @@ export default function SettingsScreen() {
     return (
         <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
             <View style={styles.header}>
-                <Text style={[Styles.title, { marginBottom: 4, fontFamily: 'Geist-Bold', fontSize: 32, letterSpacing: -0.5 }]}>Settings</Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 15, fontFamily: 'Geist-Medium' }}>Preferences & Data</Text>
+                <Text style={[Styles.title, { marginBottom: 0, fontFamily: 'Geist-Bold', fontSize: 32, letterSpacing: -0.5 }]}>Settings</Text>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
-
                 {/* Section: Financial Profile (HERO) */}
                 <SectionHeader title="Financial Profile" />
                 <SettingsHeroCard>
@@ -473,10 +451,9 @@ export default function SettingsScreen() {
                     <SettingsItem
                         icon="Download"
                         title="Export Data"
-                        subtitle="CSV Download"
-                        onPress={handleExport}
-                    />
-                    <Separator />
+                        // subtitle="CSV or JSON formats"
+                        onPress={() => router.push('/export')}
+                    /><Separator />
                     <SettingsItem
                         icon="Trash2"
                         title="Trash Bin"

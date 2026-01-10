@@ -36,7 +36,15 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
             statusBarTranslucent
         >
             <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-                <View style={[styles.alertContainer, { backgroundColor: Colors.surface, shadowColor: "#000" }]}>
+                <View style={[
+                    styles.alertContainer,
+                    {
+                        backgroundColor: Colors.surface,
+                        shadowColor: Colors.shadow,
+                        borderWidth: 1,
+                        borderColor: Colors.border,
+                    }
+                ]}>
                     <View style={styles.content}>
                         <Text style={[styles.title, { color: Colors.text }]}>{title}</Text>
                         <Text style={[styles.message, { color: Colors.textSecondary }]}>{message}</Text>

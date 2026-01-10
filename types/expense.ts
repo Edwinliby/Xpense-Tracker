@@ -22,6 +22,7 @@ export interface Transaction {
   nextOccurrence?: string; // ISO string
   parentId?: string;
   excludeFromBudget?: boolean;
+  note?: string;
 }
 
 export interface Category {

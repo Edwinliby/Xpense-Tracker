@@ -1,4 +1,4 @@
-import { useStyles } from '@/constants/Styles';
+
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, format, isWithinInterval, startOfMonth, subMonths } from 'date-fns';
@@ -9,7 +9,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 export const MonthComparisonWidget: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const Colors = useThemeColor();
-    const Styles = useStyles();
+
     const { transactions, currencySymbol } = useExpense();
 
     const comparison = useMemo(() => {
@@ -55,12 +55,11 @@ export const MonthComparisonWidget: React.FC<{ targetDate: Date }> = ({ targetDa
     return (
         <View style={[
             styles.container,
-            Styles.shadow,
             {
                 backgroundColor: Colors.surface,
                 shadowColor: Colors.shadow,
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.05)'
+                borderWidth: .5,
+                borderColor: Colors.border
             }
         ]}>
             <View style={styles.header}>
@@ -133,9 +132,8 @@ export const MonthComparisonWidget: React.FC<{ targetDate: Date }> = ({ targetDa
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 24,
+        padding: 20,
         marginHorizontal: 20,
-        marginBottom: 24,
     },
     header: {
         flexDirection: 'row',

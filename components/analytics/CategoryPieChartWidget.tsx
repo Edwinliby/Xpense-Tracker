@@ -79,12 +79,11 @@ export const CategoryPieChartWidget: React.FC<{ targetDate: Date }> = ({ targetD
     return (
         <View style={[
             styles.container,
-            Styles.shadow,
             {
                 backgroundColor: Colors.surface,
                 shadowColor: Colors.shadow,
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.05)'
+                borderWidth: .5,
+                borderColor: Colors.border
             }
         ]}>
             <Text style={[styles.title, { color: Colors.text }]}>Expense Breakdown</Text>
@@ -131,7 +130,7 @@ export const CategoryPieChartWidget: React.FC<{ targetDate: Date }> = ({ targetD
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 24,
+        padding: 20,
         marginHorizontal: 20,
     },
     title: {

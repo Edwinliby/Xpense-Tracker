@@ -1,4 +1,4 @@
-import { useStyles } from '@/constants/Styles';
+
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { endOfMonth, getDay, isWithinInterval, startOfMonth } from 'date-fns';
@@ -8,7 +8,7 @@ import { BarChart } from 'react-native-gifted-charts';
 
 export const DayOfWeekWidget: React.FC<{ targetDate: Date, width?: number }> = ({ targetDate, width }) => {
     const Colors = useThemeColor();
-    const Styles = useStyles();
+
     const { transactions, currencySymbol } = useExpense();
 
     const { barData, maxVal } = useMemo(() => {
@@ -59,12 +59,11 @@ export const DayOfWeekWidget: React.FC<{ targetDate: Date, width?: number }> = (
     return (
         <View style={[
             styles.container,
-            Styles.shadow,
             {
                 backgroundColor: Colors.surface,
                 shadowColor: Colors.shadow,
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.05)'
+                borderWidth: .5,
+                borderColor: Colors.border
             }
         ]}>
             <View style={styles.header}>
@@ -99,9 +98,8 @@ export const DayOfWeekWidget: React.FC<{ targetDate: Date, width?: number }> = (
 const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
-        padding: 24,
+        padding: 20,
         marginHorizontal: 20,
-        marginBottom: 32,
     },
     header: {
         marginBottom: 20,

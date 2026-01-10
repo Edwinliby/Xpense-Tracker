@@ -189,13 +189,12 @@ export const FinancialHealthWidget: React.FC<{ targetDate: Date }> = ({ targetDa
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 24,
         paddingHorizontal: 20,
     },
     card: {
-        borderRadius: 20,
-        padding: 16, // Reduced padding
-        borderWidth: 1,
+        borderRadius: 16,
+        padding: 10,
+        borderWidth: .5,
     },
     row: {
         flexDirection: 'row',

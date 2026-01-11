@@ -4,6 +4,8 @@ import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { AchievementCategory } from '@/types/achievements';
+import { Stack, useRouter } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -12,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function AchievementsScreen() {
     const Styles = useStyles();
     const Colors = useThemeColor();
+    const router = useRouter();
     const { achievements } = useExpense();
     const [filter, setFilter] = useState<AchievementCategory | 'all'>('all');
 
@@ -42,8 +45,17 @@ export default function AchievementsScreen() {
 
     return (
         <SafeAreaView style={Styles.container}>
-            <View style={Styles.header}>
-                <Text style={[Styles.title, { marginBottom: 4, fontFamily: 'Geist-Bold', fontSize: 28, letterSpacing: -1 }]}>Achievements</Text>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            <View style={[Styles.header, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{ backgroundColor: Colors.surface, padding: 8, borderRadius: 12 }}
+                >
+                    <ChevronLeft size={24} color={Colors.text} />
+                </TouchableOpacity>
+                <Text style={[Styles.title, { marginBottom: 0, fontFamily: 'Geist-Bold', fontSize: 24, letterSpacing: -1 }]}>Achievements</Text>
             </View>
 
             {/* Level Widget */}

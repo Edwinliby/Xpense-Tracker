@@ -56,7 +56,7 @@ export default function RootLayout() {
 function AppContent() {
 
   const { colorScheme } = useTheme();
-  const { session, loading } = useAuth();
+  const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -65,14 +65,14 @@ function AppContent() {
 
     const inAuthGroup = segments[0] === 'auth';
 
-    if (!session && !inAuthGroup) {
+    if (!user && !inAuthGroup) {
       // Redirect to the sign-in page.
       router.replace('/auth/login');
-    } else if (session && inAuthGroup) {
+    } else if (user && inAuthGroup) {
       // Redirect away from the sign-in page.
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments, router]);
+  }, [user, loading, segments, router]);
 
   if (loading) {
     return (

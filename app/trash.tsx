@@ -115,7 +115,7 @@ export default function TrashScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: Colors.surface }]}>
                     <ArrowLeft size={20} color={Colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: Colors.text }]}>Bin</Text>
+                <Text style={[styles.headerTitle, { color: Colors.text }]}>Trash Bin</Text>
 
                 {trash.length > 0 ? (
                     <View style={styles.headerActions}>
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: 12,
         paddingHorizontal: 20,
     },
     backButton: {
@@ -178,10 +178,10 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontFamily: 'Geist-Bold',
-        position: 'absolute',
-        left: '50%',
     },
     headerActions: {
+        position: 'absolute',
+        right: 20,
         flexDirection: 'row',
         gap: 8,
     },

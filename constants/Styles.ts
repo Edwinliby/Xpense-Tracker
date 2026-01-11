@@ -29,7 +29,6 @@ export const useStyles = () => {
     header: {
       paddingHorizontal: 20,
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
       marginBottom: 20,
     },

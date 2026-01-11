@@ -27,7 +27,7 @@ export const HomeChart: React.FC<HomeChartProps> = ({
     const availableWidth = customWidth || (screenWidth - 40);
     return {
       width: availableWidth,
-      height: 180,
+      height: 140,
       // availableWidth - 20 (initial). Use data.length (not -1) to leave a bit of margin at end.
       spacing: (availableWidth - 20) / (data.length > 1 ? data.length - 1 : 1),
       initialSpacing: 20,

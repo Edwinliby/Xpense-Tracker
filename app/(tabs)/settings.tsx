@@ -1,8 +1,7 @@
 import { Button } from '@/components/Button';
-import { ColorPicker } from '@/components/ColorPicker';
-import { IconPicker } from '@/components/IconPicker';
 import { Input } from '@/components/Input';
 import { SectionHeader, Separator, SettingsCard, SettingsHeroCard, SettingsItem } from '@/components/SettingsComponents';
+import { UserLevelWidget } from '@/components/UserLevelWidget';
 import { useStyles } from '@/constants/Styles';
 import { useAlert } from '@/context/AlertContext';
 import { useAuth } from '@/context/AuthContext';
@@ -17,11 +16,10 @@ import {
     Calendar,
     Monitor,
     Moon,
-    Sun,
-    X
+    Sun
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -40,12 +38,10 @@ export default function SettingsScreen() {
         currency,
         setCurrency,
         currencySymbol,
+        achievements,
         categories,
-        addCategory,
-        deleteCategory,
-        transactions,
         trash,
-        purgeData,
+        username,
     } = useExpense();
 
     const [budgetInput, setBudgetInput] = useState('');
@@ -53,12 +49,6 @@ export default function SettingsScreen() {
     const [incomeDurationInput, setIncomeDurationInput] = useState('');
     const [, setIsSaving] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [showAddCategory, setShowAddCategory] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
-    const [selectedIcon, setSelectedIcon] = useState('MoreHorizontal');
-    const [selectedColor, setSelectedColor] = useState('#FFD93D');
-    const [showIconPicker, setShowIconPicker] = useState(false);
-    const [showColorPicker, setShowColorPicker] = useState(false);
     const { showAlert } = useAlert();
 
     useEffect(() => {
@@ -118,6 +108,8 @@ export default function SettingsScreen() {
         debouncedSaveIncomeDuration(text);
     };
 
+
+
     const onDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false);
         if (selectedDate) {
@@ -125,41 +117,6 @@ export default function SettingsScreen() {
             const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
             setIncomeStartDate(`${year}-${month}`);
         }
-    };
-
-    const handleAddCategory = () => {
-        if (!newCategoryName.trim()) {
-            showAlert('Error', 'Please enter a category name');
-            return;
-        }
-        addCategory(newCategoryName.trim(), selectedIcon, selectedColor);
-        setNewCategoryName('');
-        setSelectedIcon('MoreHorizontal');
-        setSelectedColor('#FFD93D');
-        setShowAddCategory(false);
-        showAlert('Success', 'Category added successfully');
-    };
-
-    const handleDeleteCategory = (categoryId: string, categoryName: string) => {
-        const category = categories.find(c => c.id === categoryId);
-        if (category?.isPredefined) {
-            showAlert('Cannot Delete', 'Predefined categories cannot be deleted.', [{ text: 'OK' }]);
-            return;
-        }
-
-        const hasTransactions = transactions.some(t => t.category === categoryName);
-        if (hasTransactions) {
-            showAlert('Cannot Delete', `The category "${categoryName}" has associated transactions. Please delete or reassign them first.`, [{ text: 'OK' }]);
-            return;
-        }
-        showAlert(
-            'Delete Category',
-            `Are you sure you want to delete "${categoryName}"?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: () => deleteCategory(categoryId) }
-            ]
-        );
     };
 
     const { signOut } = useAuth();
@@ -175,69 +132,9 @@ export default function SettingsScreen() {
         );
     };
 
-    const handleResetData = () => {
-        showAlert(
-            'Reset App Data',
-            'This will permanently delete ALL transactions, categories, and settings. This action cannot be undone.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Reset Everything',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await purgeData();
-                        showAlert('Success', 'App data has been reset.');
-                    }
-                }
-            ]
-        );
-    };
 
-    const handleDeleteAccount = () => {
-        showAlert(
-            'Delete Account',
-            'Are you sure you want to delete your account? This will permanently remove all your data associated with this account.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Continue',
-                    style: 'destructive',
-                    onPress: () => {
-                        // Small delay to allow previous alert to close before showing the next one
-                        setTimeout(() => {
-                            showAlert(
-                                'Final Warning',
-                                'This action CANNOT be undone. All your transactions, goals, and history will be lost forever. Are you absolutely sure?',
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    {
-                                        text: 'Yes, Delete Account',
-                                        style: 'destructive',
-                                        onPress: async () => {
-                                            try {
-                                                await purgeData(true);
-                                                try { await signOut(); } catch { /* ignore */ }
-                                                router.replace('/auth/login');
-                                            } catch (error) {
-                                                console.error("Error deleting account:", error);
-                                                showAlert("Error", "Failed to delete account data. Please try again.");
-                                            }
-                                        }
-                                    }
-                                ]
-                            );
-                        }, 500);
-                    }
-                }
-            ]
-        );
-    };
 
-    const renderIcon = (iconName: string, color: string, size: number = 20) => {
-        const IconComponent = (Icons as any)[iconName];
-        if (!IconComponent) return null;
-        return <IconComponent size={size} color={color} />;
-    };
+
 
     return (
         <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
@@ -247,14 +144,16 @@ export default function SettingsScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
                 {/* Section: Financial Profile (HERO) */}
+                <UserLevelWidget achievements={achievements} onPress={() => router.push('/achievements')} variant="compact" username={username} />
+
                 <SectionHeader title="Financial Profile" />
                 <SettingsHeroCard>
                     <View style={{ gap: 24 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
                             <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Income</Text>
+                                <Text style={{ color: Colors.textSecondary, fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Income</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={{ color: '#fff', fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
+                                    <Text style={{ color: Colors.text, fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
                                     <View style={{ flex: 1 }}>
                                         <Input
                                             value={incomeInput}
@@ -263,7 +162,7 @@ export default function SettingsScreen() {
                                             placeholder="0"
                                             containerStyle={{ marginBottom: 0 }}
                                             style={{
-                                                backgroundColor: 'rgba(255,255,255,0.15)',
+                                                backgroundColor: Colors.surfaceHighlight,
                                                 borderWidth: 0,
                                                 height: 44,
                                                 width: '100%',
@@ -271,22 +170,22 @@ export default function SettingsScreen() {
                                                 paddingHorizontal: 12,
                                             }}
                                             inputStyle={{
-                                                color: '#fff',
+                                                color: Colors.text,
                                                 fontSize: 24,
                                                 fontFamily: 'Geist-Bold',
                                                 paddingVertical: 0,
                                                 height: '100%',
                                             }}
-                                            placeholderTextColor="rgba(255,255,255,0.4)"
+                                            placeholderTextColor={Colors.textSecondary}
                                         />
                                     </View>
                                 </View>
                             </View>
-                            <View style={{ height: 40, width: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                            <View style={{ height: 40, width: 1, backgroundColor: Colors.border }} />
                             <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Budget</Text>
+                                <Text style={{ color: Colors.textSecondary, fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Budget</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={{ color: '#fff', fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
+                                    <Text style={{ color: Colors.text, fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
                                     <View style={{ flex: 1 }}>
                                         <Input
                                             value={budgetInput}
@@ -295,7 +194,7 @@ export default function SettingsScreen() {
                                             placeholder="0"
                                             containerStyle={{ marginBottom: 0 }}
                                             style={{
-                                                backgroundColor: 'rgba(255,255,255,0.15)',
+                                                backgroundColor: Colors.surfaceHighlight,
                                                 borderWidth: 0,
                                                 height: 44,
                                                 width: '100%',
@@ -303,24 +202,24 @@ export default function SettingsScreen() {
                                                 paddingHorizontal: 12,
                                             }}
                                             inputStyle={{
-                                                color: '#fff',
+                                                color: Colors.text,
                                                 fontSize: 24,
                                                 fontFamily: 'Geist-Bold',
                                                 paddingVertical: 0,
                                                 height: '100%',
                                             }}
-                                            placeholderTextColor="rgba(255,255,255,0.4)"
+                                            placeholderTextColor={Colors.textSecondary}
                                         />
                                     </View>
                                 </View>
                             </View>
                         </View>
 
-                        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                        <View style={{ height: 1, backgroundColor: Colors.border }} />
 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Income Duration</Text>
+                                <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Income Duration</Text>
                                 <Input
                                     value={incomeDurationInput}
                                     onChangeText={handleIncomeDurationChange}
@@ -328,25 +227,25 @@ export default function SettingsScreen() {
                                     placeholder="12"
                                     containerStyle={{ marginBottom: 0 }}
                                     style={{
-                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                        backgroundColor: Colors.surfaceHighlight,
                                         borderWidth: 0,
                                         height: 36
                                     }}
                                     inputStyle={{
-                                        color: '#fff',
+                                        color: Colors.text,
                                         fontSize: 14,
                                         paddingVertical: 0,
                                         height: '100%',
                                     }}
-                                    placeholderTextColor="rgba(255,255,255,0.4)"
+                                    placeholderTextColor={Colors.textSecondary}
                                 />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Start Date</Text>
+                                <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Start Date</Text>
                                 <TouchableOpacity
                                     onPress={() => Platform.OS !== 'web' && setShowDatePicker(true)}
                                     style={{
-                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                        backgroundColor: Colors.surfaceHighlight,
                                         height: 36,
                                         borderRadius: 8,
                                         flexDirection: 'row',
@@ -355,10 +254,10 @@ export default function SettingsScreen() {
                                         justifyContent: 'space-between'
                                     }}
                                 >
-                                    <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Geist-Medium' }}>
+                                    <Text style={{ color: Colors.text, fontSize: 14, fontFamily: 'Geist-Medium' }}>
                                         {incomeStartDate || 'Select'}
                                     </Text>
-                                    <Calendar size={14} color="rgba(255,255,255,0.6)" />
+                                    <Calendar size={14} color={Colors.textSecondary} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -368,6 +267,12 @@ export default function SettingsScreen() {
                 {/* Section: Preferences */}
                 <SectionHeader title="Preferences" />
                 <SettingsCard noPadding>
+                    <SettingsItem
+                        icon="User"
+                        title="Account Info"
+                        onPress={() => router.push('/account-info')}
+                    />
+                    <Separator />
                     <SettingsItem
                         icon="Palette"
                         title="Theme"
@@ -423,35 +328,27 @@ export default function SettingsScreen() {
                     />
                 </SettingsCard>
 
-                {/* Section: Categories */}
-                <SectionHeader title="Categories" actionLabel="Add New" onAction={() => setShowAddCategory(true)} />
-                <SettingsCard>
-                    <View style={styles.categoryGrid}>
-                        {categories.map((cat) => (
-                            <TouchableOpacity
-                                key={cat.id}
-                                style={[styles.categoryPill, { backgroundColor: cat.color + '15', borderColor: cat.color + '30' }]}
-                                onPress={() => !cat.isPredefined && handleDeleteCategory(cat.id, cat.name)}
-                            >
-                                {renderIcon(cat.icon, cat.color, 16)}
-                                <Text style={[styles.categoryPillText, { color: Colors.text }]}>{cat.name}</Text>
-                                {!cat.isPredefined && (
-                                    <View style={{ backgroundColor: cat.color + '20', borderRadius: 10, padding: 2 }}>
-                                        <X size={10} color={cat.color} />
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </SettingsCard>
-
                 {/* Section: Data & Privacy */}
                 <SectionHeader title="Data & Privacy" />
                 <SettingsCard noPadding>
                     <SettingsItem
+                        icon="LayoutGrid"
+                        title="Manage Categories"
+                        subtitle={`${categories.length} categories`}
+                        onPress={() => router.push('/categories')}
+                    />
+                    <Separator />
+                    <SettingsItem
+                        icon="History"
+                        title="Transactions History"
+                        subtitle="View all your past transactions"
+                        onPress={() => router.push('/transactions-history')}
+                    />
+                    <Separator />
+                    <SettingsItem
                         icon="Download"
                         title="Export Data"
-                        // subtitle="CSV or JSON formats"
+                        subtitle="Select format and export data"
                         onPress={() => router.push('/export')}
                     /><Separator />
                     <SettingsItem
@@ -470,95 +367,19 @@ export default function SettingsScreen() {
                         icon={<Icons.LogOut size={16} color={Colors.text} />}
                         style={{ backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }}
                     />
-                    <Button
-                        title="Reset Data"
-                        onPress={handleResetData}
-                        variant="secondary"
-                        style={{ backgroundColor: Colors.danger + '10', borderColor: Colors.danger + '20', borderWidth: 1 }}
-                        textStyle={{ color: Colors.danger }}
-                    />
-                    <Button
-                        title="Delete Account"
-                        onPress={handleDeleteAccount}
-                        variant="secondary"
-                        style={{ backgroundColor: Colors.danger + '10', borderColor: Colors.danger + '20', borderWidth: 1 }}
-                        textStyle={{ color: Colors.danger }}
-                    />
+
                 </View>
 
+                {Platform.OS !== 'web' && showDatePicker && (
+                    <DateTimePicker
+                        value={incomeStartDate ? new Date(incomeStartDate + '-01') : new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={onDateChange}
+                        themeVariant={theme === 'dark' ? 'dark' : 'light'}
+                    />
+                )}
             </ScrollView>
-
-            <Modal visible={showAddCategory} animationType="slide" transparent onRequestClose={() => setShowAddCategory(false)}>
-                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-                    <View style={[styles.modalContent, { backgroundColor: Colors.surface }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: Colors.text }]}>New Category</Text>
-                            <TouchableOpacity onPress={() => setShowAddCategory(false)} style={{ padding: 4, backgroundColor: Colors.surfaceHighlight, borderRadius: 20 }}>
-                                <X size={20} color={Colors.text} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <Input
-                            label="Category Name"
-                            placeholder="e.g., Entertainment"
-                            value={newCategoryName}
-                            onChangeText={setNewCategoryName}
-                        />
-
-                        <Text style={[styles.label, { color: Colors.textSecondary, marginTop: 20, marginBottom: 12 }]}>Icon & Color</Text>
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity
-                                style={[styles.pickerButton, { flex: 1, backgroundColor: Colors.background, borderColor: Colors.border }]}
-                                onPress={() => setShowIconPicker(true)}
-                            >
-                                <View style={[styles.iconPreview, { backgroundColor: selectedColor + '20' }]}>
-                                    {renderIcon(selectedIcon, selectedColor, 20)}
-                                </View>
-                                <Text style={[styles.pickerButtonText, { color: Colors.text }]}>Select Icon</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.pickerButton, { flex: 1, backgroundColor: Colors.background, borderColor: Colors.border }]}
-                                onPress={() => setShowColorPicker(true)}
-                            >
-                                <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
-                                <Text style={[styles.pickerButtonText, { color: Colors.text }]}>Select Color</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.modalButtons}>
-                            <Button
-                                title="Add Category"
-                                onPress={handleAddCategory}
-                                style={{ flex: 1 }}
-                            />
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            <IconPicker
-                visible={showIconPicker}
-                selectedIcon={selectedIcon}
-                onSelect={setSelectedIcon}
-                onClose={() => setShowIconPicker(false)}
-            />
-
-            <ColorPicker
-                visible={showColorPicker}
-                selectedColor={selectedColor}
-                onSelect={setSelectedColor}
-                onClose={() => setShowColorPicker(false)}
-            />
-            {Platform.OS !== 'web' && showDatePicker && (
-                <DateTimePicker
-                    value={incomeStartDate ? new Date(incomeStartDate + '-01') : new Date()}
-                    mode="date"
-                    display="default"
-                    onChange={onDateChange}
-                    themeVariant={theme === 'dark' ? 'dark' : 'light'}
-                />
-            )}
         </SafeAreaView>
     );
 }
@@ -647,3 +468,5 @@ const styles = StyleSheet.create({
         marginTop: 32,
     },
 });
+
+

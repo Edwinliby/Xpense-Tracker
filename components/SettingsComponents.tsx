@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     subtitle: {
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: 'Geist-Medium',
     },
     rightContainer: {

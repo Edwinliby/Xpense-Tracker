@@ -29,7 +29,7 @@ export const Colors = {
     successGradient: ["#34D399", "#10B981"],
     dangerGradient: ["#F87171", "#EF4444"],
     warningGradient: ["#FBBF24", "#F59E0B"],
-    settingGradient: ["#2DD4BF", "#0D9488"],
+    settingGradient: ["#eeeeee", "#ffffff"], // Slate 50 -> Slate 100
   },
   dark: {
     text: "#F8FAFC", // Slate 50
@@ -59,6 +59,6 @@ export const Colors = {
     successGradient: ["#4ADE80", "#22C55E"], // Green 400 -> Green 500
     dangerGradient: ["#F87171", "#EF4444"], // Red 400 -> Red 500
     warningGradient: ["#FCD34D", "#FBBF24"],
-    settingGradient: ["rgba(255, 111, 0, .35)", "#000000"],
+    settingGradient: ["#222222ff", "#060708ff"], // Slate 700 -> Slate 900
   },
 };

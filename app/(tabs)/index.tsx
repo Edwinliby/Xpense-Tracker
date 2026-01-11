@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function DashboardScreen() {
   const Styles = useStyles();
   const Colors = useThemeColor();
-  const { transactions, budget, income, incomeDuration, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement, hasSeenTutorial, completeTutorial, loading } = useExpense();
+  const { transactions, budget, income, incomeDuration, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement, hasSeenTutorial, completeTutorial, loading, username } = useExpense();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -429,9 +429,7 @@ export default function DashboardScreen() {
     return width - 40; // Mobile default
   }, [width, isDesktop]);
 
-  const realTimeCurrentMonthSpent = useMemo(() => {
-    return getEffectiveSpent(startOfMonth(now), endOfMonth(now), { includeExcluded: false });
-  }, [getEffectiveSpent, now]);
+
 
   return (
     <SafeAreaView style={[Styles.container, { backgroundColor: Colors.background }]}>
@@ -440,9 +438,11 @@ export default function DashboardScreen() {
         {/* --- Header Section --- */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.greeting, { color: Colors.textSecondary }]}>Welcome back,</Text>
+            <Text style={[styles.greeting, { color: Colors.textSecondary }]}>
+              {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
+            </Text>
             <Text style={[styles.title, { color: Colors.text }]}>
-              {budget > 0 && budget < realTimeCurrentMonthSpent ? 'Lavish Spender' : 'Economical Man'}
+              {username || 'Guest'}
             </Text>
           </View>
 
@@ -535,7 +535,7 @@ export default function DashboardScreen() {
                 But for now let's place it top of Right Column or stick with mobile flow.
                 Actually, putting it above the chart in Left Column makes more semantic sense for the chart.
                 But let's stick to simple first: Right Column top. */}
-            <View style={{ marginBottom: 24, marginHorizontal: 16 }}>
+            <View style={{ marginBottom: 6, marginHorizontal: 16 }}>
               <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -705,67 +705,65 @@ export default function DashboardScreen() {
             })()}
 
             {/* --- Recent Transactions --- */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recent Activity</Text>
-                {recentTransactions.length > 5 && (
-                  <TouchableOpacity onPress={() => setShowAllTransactions(!showAllTransactions)}>
-                    <Text style={[styles.seeAll, { color: Colors.primary }]}>{showAllTransactions ? 'Show Less' : 'See All'}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recent Activity</Text>
+              {recentTransactions.length > 5 && (
+                <TouchableOpacity onPress={() => setShowAllTransactions(!showAllTransactions)}>
+                  <Text style={[styles.seeAll, { color: Colors.primary }]}>{showAllTransactions ? 'Show Less' : 'See All'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
-              <View style={styles.transactionsList}>
-                {(() => {
-                  const groupedTransactions = recentTransactions.slice(0, showAllTransactions ? undefined : 5).reduce((groups, t) => {
-                    const date = new Date(t.date);
-                    const today = new Date();
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
+            <View style={styles.transactionsList}>
+              {(() => {
+                const groupedTransactions = recentTransactions.slice(0, showAllTransactions ? undefined : 5).reduce((groups, t) => {
+                  const date = new Date(t.date);
+                  const today = new Date();
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
 
-                    let key = format(date, 'MMMM d, yyyy');
-                    if (date.toDateString() === today.toDateString()) {
-                      key = 'Today';
-                    } else if (date.toDateString() === yesterday.toDateString()) {
-                      key = 'Yesterday';
-                    }
+                  let key = format(date, 'MMMM d, yyyy');
+                  if (date.toDateString() === today.toDateString()) {
+                    key = 'Today';
+                  } else if (date.toDateString() === yesterday.toDateString()) {
+                    key = 'Yesterday';
+                  }
 
-                    if (!groups[key]) {
-                      groups[key] = [];
-                    }
-                    groups[key].push(t);
-                    return groups;
-                  }, {} as Record<string, typeof recentTransactions>);
+                  if (!groups[key]) {
+                    groups[key] = [];
+                  }
+                  groups[key].push(t);
+                  return groups;
+                }, {} as Record<string, typeof recentTransactions>);
 
-                  return Object.entries(groupedTransactions).map(([date, txs]) => (
-                    <View key={date} style={{ marginBottom: 24 }}>
-                      <Text style={{
-                        fontSize: 12,
-                        fontFamily: 'Geist-SemiBold',
-                        color: Colors.textSecondary,
-                        marginBottom: 12,
-                        marginLeft: 20,
-                        textTransform: 'uppercase',
-                        letterSpacing: 1,
-                        opacity: 0.7
-                      }}>
-                        {date}
-                      </Text>
-                      {txs.map(t => (
-                        <ExpenseCard key={t.id} transaction={t} />
-                      ))}
-                    </View>
-                  ));
-                })()}
-                {recentTransactions.length === 0 && (
-                  <View style={[styles.emptyState, { backgroundColor: Colors.surface, marginHorizontal: 20 }]}>
-                    <View style={[styles.emptyIcon, { backgroundColor: Colors.surfaceHighlight }]}>
-                      <Wallet size={24} color={Colors.textSecondary} />
-                    </View>
-                    <Text style={[styles.emptyText, { color: Colors.textSecondary }]}>No transactions in this period</Text>
+                return Object.entries(groupedTransactions).map(([date, txs]) => (
+                  <View key={date} style={{ marginBottom: 24 }}>
+                    <Text style={{
+                      fontSize: 12,
+                      fontFamily: 'Geist-SemiBold',
+                      color: Colors.textSecondary,
+                      marginBottom: 12,
+                      marginLeft: 20,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1,
+                      opacity: 0.7
+                    }}>
+                      {date}
+                    </Text>
+                    {txs.map(t => (
+                      <ExpenseCard key={t.id} transaction={t} />
+                    ))}
                   </View>
-                )}
-              </View>
+                ));
+              })()}
+              {recentTransactions.length === 0 && (
+                <View style={[styles.emptyState, { backgroundColor: Colors.surface, marginHorizontal: 20 }]}>
+                  <View style={[styles.emptyIcon, { backgroundColor: Colors.surfaceHighlight }]}>
+                    <Wallet size={24} color={Colors.textSecondary} />
+                  </View>
+                  <Text style={[styles.emptyText, { color: Colors.textSecondary }]}>No transactions in this period</Text>
+                </View>
+              )}
             </View>
 
           </View>
@@ -938,9 +936,6 @@ const styles = StyleSheet.create({
   periodText: {
     fontSize: 16,
     fontFamily: 'Geist-SemiBold',
-  },
-  sectionContainer: {
-    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',

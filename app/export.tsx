@@ -222,11 +222,7 @@ export default function ExportScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-            <Stack.Screen
-                options={{
-                    headerShown: false,
-                }}
-            />
+            <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
             <View style={styles.header}>
@@ -342,7 +338,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: 12,
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
         paddingHorizontal: 20,
     },

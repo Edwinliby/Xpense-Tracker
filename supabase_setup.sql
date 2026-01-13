@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     next_occurrence TIMESTAMPTZ,
     parent_id TEXT,
     
+    -- Account linking
+    account_id TEXT,
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

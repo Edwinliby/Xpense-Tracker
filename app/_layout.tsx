@@ -125,6 +125,7 @@ function AppContent() {
 
           <Stack.Screen name="trash" options={{ headerShown: false, animation: 'ios_from_right' }} />
           <Stack.Screen name="export" options={{ headerShown: false, animation: 'ios_from_right' }} />
+          <Stack.Screen name="manage-account" options={{ presentation: 'modal', headerShown: false }} />
         </Stack>
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       </WebContainer>

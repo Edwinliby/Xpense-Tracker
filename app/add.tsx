@@ -11,7 +11,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { addMonths, format } from 'date-fns';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import * as Icons from 'lucide-react-native';
 import { Calendar, Camera, Image as ImageIcon, RotateCw, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function AddTransactionScreen() {
     const router = useRouter();
 
-    const { addTransaction, editTransaction, deleteTransaction, categories, currencySymbol } = useExpense();
+    const { addTransaction, editTransaction, deleteTransaction, categories, currencySymbol, trackingMode, accounts } = useExpense();
     const params = useLocalSearchParams();
     const Colors = useThemeColor();
     const { showAlert } = useAlert();
@@ -43,6 +43,7 @@ export default function AddTransactionScreen() {
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [isRecurring, setIsRecurring] = useState(false);
     const [excludeFromBudget, setExcludeFromBudget] = useState(false);
+    const [accountId, setAccountId] = useState('');
 
 
     useFocusEffect(
@@ -75,6 +76,7 @@ export default function AddTransactionScreen() {
                 setLentTo(getParam(params.lentTo));
                 setIsRecurring(getParam(params.isRecurring) === 'true');
                 setExcludeFromBudget(getParam(params.excludeFromBudget) === 'true');
+                setAccountId(getParam(params.accountId));
 
 
 
@@ -91,11 +93,102 @@ export default function AddTransactionScreen() {
                 setReceiptImage(null);
                 setIsRecurring(false);
                 setExcludeFromBudget(false);
+                setAccountId('');
             }
-        }, [params.id, params.amount, params.description, params.category, params.type, params.date, params.receiptImage, params.isFriendPayment, params.paidBy, params.isLent, params.lentTo, params.isRecurring, params.excludeFromBudget, isEditing])
+        }, [params.id, params.amount, params.description, params.category, params.type, params.date, params.receiptImage, params.isFriendPayment, params.paidBy, params.isLent, params.lentTo, params.isRecurring, params.excludeFromBudget, params.accountId, isEditing])
     );
 
-    const handleSave = useCallback(() => {
+    const navigation = useNavigation();
+    const isSaving = React.useRef(false);
+
+    // Initial state derived from params for dirty checking
+    const getInitialState = useCallback(() => {
+        const getParam = (p: string | string[] | undefined) => Array.isArray(p) ? p[0] : p || '';
+        if (isEditing) {
+            return {
+                amount: getParam(params.amount),
+                description: getParam(params.description),
+                category: getParam(params.category),
+                type: getParam(params.type) || 'expense',
+                date: getParam(params.date) ? new Date(getParam(params.date)) : new Date(),
+                receiptImage: getParam(params.receiptImage) || null,
+            };
+        }
+        return {
+            amount: '',
+            description: '',
+            category: '',
+            type: 'expense',
+            date: new Date(),
+            receiptImage: null as string | null,
+        };
+    }, [isEditing, params]);
+
+
+    React.useEffect(() => {
+        const listener = navigation.addListener('beforeRemove', (e) => {
+            if (isSaving.current) {
+                return;
+            }
+
+            // Check for unsaved changes
+            const checkHasChanges = () => {
+                // If it's a new transaction, check if user has entered any data
+                if (!isEditing) {
+                    return !!amount || !!description || !!category || !!receiptImage;
+                }
+
+                // If editing, check if values differ from original params
+                // Note: This is an approximate check. 
+                const initial = getInitialState();
+
+                // Simple comparisons
+                if (amount !== initial.amount) return true;
+                if (description !== initial.description) return true;
+                if (category !== initial.category) return true;
+                // Type check (handling logic from line 59)
+                const typeParam = Array.isArray(params.type) ? params.type[0] : params.type || '';
+                const initialType = (typeParam === 'income' || typeParam === 'expense') ? typeParam : 'expense';
+                if (type !== initialType) return true;
+
+                // Date check (ignoring milliseconds/seconds diffs if acceptable, but exact match is safer)
+                // params.date is string ISO. 
+                const paramDate = Array.isArray(params.date) ? params.date[0] : params.date;
+                const initialDate = paramDate ? new Date(paramDate) : new Date();
+                // Compare just date/month/year/hours/minutes might be safer, but ISO string compare works if derived correctly.
+                // Simplified: if date changed significantly. 
+                if (Math.abs(date.getTime() - initialDate.getTime()) > 1000) return true;
+
+                if (receiptImage !== initial.receiptImage) return true;
+
+                return false;
+            };
+
+            const hasChanges = checkHasChanges();
+
+            if (!hasChanges) {
+                return;
+            }
+
+            e.preventDefault();
+
+            showAlert('Discard Changes?', 'You have unsaved changes. Are you sure you want to discard them?', [
+                { text: 'Keep Editing', style: 'cancel', onPress: () => { } },
+                {
+                    text: 'Discard',
+                    style: 'destructive',
+                    onPress: () => {
+                        navigation.dispatch(e.data.action);
+                    }
+                }
+            ]);
+        });
+
+        return () => navigation.removeListener('beforeRemove', listener);
+    }, [navigation, amount, description, category, type, date, receiptImage, isEditing, getInitialState, params, showAlert]);
+
+
+    const handleSave = useCallback(async () => {
         const finalAmount = parseFloat(amount);
 
         if (!finalAmount) {
@@ -143,21 +236,26 @@ export default function AddTransactionScreen() {
             recurrenceInterval: isRecurring ? 'monthly' as const : undefined,
             nextOccurrence: isRecurring ? addMonths(date, 1).toISOString() : undefined,
             excludeFromBudget,
+            accountId: accountId || undefined,
         };
 
+
+
         try {
+            isSaving.current = true; // Bypass beforeRemove check
             if (isEditing) {
                 const id = Array.isArray(params.id) ? params.id[0] : params.id;
-                editTransaction(id as string, transactionData);
+                await editTransaction(id as string, transactionData);
             } else {
-                addTransaction(transactionData);
+                await addTransaction(transactionData);
             }
             router.back();
         } catch (error) {
             console.error("Failed to save transaction:", error);
             showAlert('Error', 'Failed to save transaction');
+            isSaving.current = false; // Reset if failed
         }
-    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring, excludeFromBudget, showAlert]);
+    }, [amount, category, date, description, type, isEditing, params.id, editTransaction, addTransaction, router, isFriendPayment, paidBy, isLent, lentTo, receiptImage, isRecurring, excludeFromBudget, showAlert, accountId]);
 
 
 
@@ -310,6 +408,47 @@ export default function AddTransactionScreen() {
                             </TouchableOpacity>
                         ))}
                     </View>
+
+                    {/* Account Selection (Visible only in Account Balance Mode) */}
+                    {trackingMode === 'account_balance' && (
+                        <View style={{ marginBottom: 24 }}>
+                            <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>Account</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
+                                {accounts.map((acc, index) => (
+                                    <TouchableOpacity
+                                        key={acc.id}
+                                        onPress={() => {
+                                            if (accountId === acc.id) {
+                                                setAccountId('');
+                                            } else {
+                                                setAccountId(acc.id);
+                                            }
+                                        }}
+                                        activeOpacity={0.7}
+                                        style={{
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 10,
+                                            borderRadius: 16,
+                                            backgroundColor: accountId === acc.id ? (acc.color || Colors.primary) : Colors.surface,
+                                            borderWidth: 1,
+                                            borderColor: accountId === acc.id ? (acc.color || Colors.primary) : Colors.border,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            marginRight: index === accounts.length - 1 ? 0 : 8 // Margin instead of gap
+                                        }}
+                                    >
+                                        <Text style={{ fontFamily: 'Geist-Medium', color: accountId === acc.id ? '#FFF' : Colors.text }}>{acc.name}</Text>
+                                        {accountId === acc.id && <Icons.Check size={14} color="#FFF" />}
+                                    </TouchableOpacity>
+                                ))}
+                                {accounts.length === 0 && (
+                                    <TouchableOpacity onPress={() => router.push('/accounts')} style={{ padding: 10 }}>
+                                        <Text style={{ color: Colors.primary }}>+ Add Account</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </ScrollView>
+                        </View>
+                    )}
 
                     {/* Category Selection */}
                     <Text style={[styles.sectionTitle, { color: Colors.textSecondary }]}>Category</Text>

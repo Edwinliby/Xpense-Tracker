@@ -61,6 +61,7 @@ export const toSupabaseTransaction = (t: Transaction) => ({
   next_occurrence: t.nextOccurrence,
   parent_id: t.parentId,
   exclude_from_budget: t.excludeFromBudget,
+  account_id: t.accountId || null,
 });
 
 export const fromSupabaseTransaction = (t: any): Transaction => ({
@@ -85,6 +86,7 @@ export const fromSupabaseTransaction = (t: any): Transaction => ({
   nextOccurrence: t.next_occurrence,
   parentId: t.parent_id,
   excludeFromBudget: t.exclude_from_budget,
+  accountId: t.account_id,
 });
 
 export const toSupabaseCategory = (c: Category) => ({

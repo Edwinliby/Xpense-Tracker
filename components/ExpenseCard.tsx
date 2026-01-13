@@ -42,6 +42,7 @@ const ExpenseCardComponent: React.FC<ExpenseCardProps> = ({ transaction }) => {
                 lentTo: transaction.lentTo,
                 isRecurring: transaction.isRecurring?.toString(),
                 excludeFromBudget: transaction.excludeFromBudget?.toString(),
+                accountId: transaction.accountId,
             }
         });
     };

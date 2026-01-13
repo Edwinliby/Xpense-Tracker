@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 10,
         borderRadius: 20,
-        borderWidth: .5,
+        borderWidth: .3,
     },
     section: {
         flex: 1,

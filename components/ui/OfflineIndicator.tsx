@@ -6,8 +6,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export const OfflineIndicator = () => {
     const { isOffline } = useExpense();
     const insets = useSafeAreaInsets();
+    const [visible, setVisible] = React.useState(false);
 
-    if (!isOffline) return null;
+    React.useEffect(() => {
+        if (isOffline) {
+            setVisible(true);
+            const timer = setTimeout(() => {
+                setVisible(false);
+            }, 4000); // Dissapear after 4 seconds
+            return () => clearTimeout(timer);
+        } else {
+            setVisible(false);
+        }
+    }, [isOffline]);
+
+    if (!visible) return null;
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>

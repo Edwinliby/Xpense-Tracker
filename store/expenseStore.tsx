@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchExchangeRate } from '@/lib/currency';
 import { fromSupabaseAchievement, fromSupabaseCategory, fromSupabaseSavingsGoal, fromSupabaseTransaction, supabase, toSupabaseAchievement, toSupabaseCategory, toSupabaseSavingsGoal, toSupabaseTransaction } from '@/lib/supabase';
 import { Achievement, ACHIEVEMENTS } from '@/types/achievements';
-import { Category, SavingsGoal, Transaction, TransactionType } from '@/types/expense';
+import { Account, Category, SavingsGoal, TrackingMode, Transaction, TransactionType } from '@/types/expense';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
@@ -16,7 +16,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import * as Crypto from 'expo-crypto';
 
-export type { Category, Transaction, TransactionType };
+export type { Account, Category, TrackingMode, Transaction, TransactionType };
 
 interface ExpenseContextType {
     transactions: Transaction[];
@@ -67,10 +67,16 @@ interface ExpenseContextType {
     completeTutorial: () => void;
     username: string;
     setUsername: (name: string) => void;
+    trackingMode: TrackingMode;
+    setTrackingMode: (mode: TrackingMode) => void;
+    accounts: Account[];
+    addAccount: (account: Omit<Account, 'id' | 'balance'>) => void;
+    updateAccount: (id: string, updates: Partial<Account>) => void;
+    deleteAccount: (id: string) => void;
 }
 
 interface SyncAction {
-    type: 'ADD_TRANSACTION' | 'UPDATE_TRANSACTION' | 'DELETE_TRANSACTION' | 'RESTORE_TRANSACTION' | 'PERMANENT_DELETE_TRANSACTION' | 'ADD_CATEGORY' | 'UPDATE_CATEGORY' | 'DELETE_CATEGORY' | 'SET_BUDGET' | 'SET_INCOME' | 'SET_INCOME_DURATION' | 'SET_INCOME_START_DATE' | 'SET_CURRENCY' | 'DISMISS_WARNING' | 'UPDATE_ACHIEVEMENTS' | 'ADD_GOAL' | 'UPDATE_GOAL' | 'DELETE_GOAL' | 'SET_USERNAME';
+    type: 'ADD_TRANSACTION' | 'UPDATE_TRANSACTION' | 'DELETE_TRANSACTION' | 'RESTORE_TRANSACTION' | 'PERMANENT_DELETE_TRANSACTION' | 'ADD_CATEGORY' | 'UPDATE_CATEGORY' | 'DELETE_CATEGORY' | 'SET_BUDGET' | 'SET_INCOME' | 'SET_INCOME_DURATION' | 'SET_INCOME_START_DATE' | 'SET_CURRENCY' | 'DISMISS_WARNING' | 'UPDATE_ACHIEVEMENTS' | 'ADD_GOAL' | 'UPDATE_GOAL' | 'DELETE_GOAL' | 'SET_USERNAME' | 'SET_TRACKING_MODE' | 'ADD_ACCOUNT' | 'UPDATE_ACCOUNT' | 'DELETE_ACCOUNT';
     payload: any;
     id: string; // Unique ID for the action
     timestamp: number;
@@ -126,6 +132,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [goals, setGoals] = useState<SavingsGoal[]>([]);
     const [hasSeenTutorial, setHasSeenTutorial] = useState(false);
 
+    const [trackingMode, setTrackingModeState] = useState<TrackingMode>('monthly_budget');
+    const [accounts, setAccounts] = useState<Account[]>([]);
+
     const completeTutorial = useCallback(() => {
         setHasSeenTutorial(true);
         saveData('hasSeenTutorial', true);
@@ -166,6 +175,8 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
         }
     };
+
+
 
     const calculateMonthlyBreakdown = useCallback((targetYear: number, carryOver: number = 0) => {
         // 1. Calculate Raw Net (Income - Expenses) for each month
@@ -314,6 +325,8 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setHasSeenTutorial(false);
         setDismissedWarnings({});
         setUsernameState('Guest');
+        setTrackingModeState('monthly_budget');
+        setAccounts([]);
         setNewlyUnlockedAchievement(null);
 
         try {
@@ -321,7 +334,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 'transactions', 'trash', 'categories', 'budget', 'income',
                 'incomeDuration', 'incomeStartDate', 'currency', 'achievements',
                 'goals', 'syncQueue', 'hasSeenTutorial', 'dismissedWarnings',
-                'username'
+                'username', 'trackingMode', 'accounts'
             ];
             await AsyncStorage.multiRemove(keys);
         } catch (e) {
@@ -635,7 +648,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
                 (payload) => {
-                    console.log('Realtime change received!', payload);
                     const { eventType, new: newRecord, old: oldRecord } = payload;
 
                     if (eventType === 'INSERT') {
@@ -802,6 +814,51 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
     }, [isOffline, user, addToQueue]);
 
+    const recalculateAccountBalances = useCallback((currentTransactions: Transaction[], currentAccounts: Account[]) => {
+        try {
+            if (!currentAccounts || currentAccounts.length === 0) return currentAccounts;
+
+            let hasChanges = false;
+            const updatedAccounts = currentAccounts.map(acc => {
+                // 1. Reset to initial (Ensure number)
+                let newBalance = Number(acc.initialBalance) || 0;
+
+                // 2. Sum relevant transactions (excluding deleted)
+                const accountTx = currentTransactions.filter(t => t.accountId === acc.id && !t.deletedAt);
+
+                for (const t of accountTx) {
+                    const amount = Number(t.amount) || 0;
+                    if (t.type === 'income') {
+                        newBalance += amount;
+                    } else {
+                        newBalance -= amount;
+                    }
+                }
+
+                // Using floating point comparison tolerance if needed, but direct inequality is usually fine for display
+                if (newBalance !== acc.balance) {
+                    hasChanges = true;
+                    return { ...acc, balance: newBalance };
+                }
+                return acc;
+            });
+
+            if (hasChanges) {
+                setAccounts(updatedAccounts);
+                saveData('accounts', updatedAccounts);
+
+                // Sync account updates to cloud if online
+                if (user && !isGuest && !isOffline) {
+                    supabase.from('user_settings').upsert({ key: 'accounts', value: JSON.stringify(updatedAccounts), user_id: user.id });
+                }
+            }
+            return updatedAccounts;
+        } catch (error) {
+            console.error('Failed to recalculate account balances', error);
+            return currentAccounts;
+        }
+    }, [user, isGuest, isOffline]);
+
     const checkBudgetAndNotify = useCallback(async (currentTransactions: Transaction[], currentBudget: number, currentIncome: number) => {
         if (currentBudget === 0) return;
 
@@ -932,6 +989,19 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             const storedAchievements = await AsyncStorage.getItem('achievements');
             const storedGoals = await AsyncStorage.getItem('goals');
+            const storedAccounts = await AsyncStorage.getItem('accounts');
+            if (storedAccounts) {
+                const parsedAccounts = JSON.parse(storedAccounts);
+                setAccounts(parsedAccounts);
+
+                // Recalculate balances on load if we have matching transactions
+                if (storedTransactions) {
+                    const parsedTx = JSON.parse(storedTransactions);
+                    const activeTx = parsedTx.filter((t: Transaction) => !t.deletedAt);
+                    recalculateAccountBalances(activeTx, parsedAccounts);
+                }
+            }
+            const storedTrackingMode = await AsyncStorage.getItem('trackingMode');
 
             const storedDismissedWarnings = await AsyncStorage.getItem('dismissedWarnings');
             const storedQueue = await AsyncStorage.getItem('syncQueue');
@@ -986,6 +1056,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
 
+            // UNBLOCK UI IMMEDIATELY
+            setLoading(false);
+
             if (user && !isGuest) {
                 // Sync with Supabase
                 const { data: remoteTransactions, error: txError } = await supabase.from('transactions').select('*').eq('user_id', user.id);
@@ -1002,7 +1075,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     }).map(t => t.id);
 
                     if (expiredTrashIds.length > 0) {
-                        // We don't await this to avoid blocking the UI load
+                        // We don't await this to avoid blocking the UI load (though UI is already unblocked now)
                         supabase.from('transactions').delete().in('id', expiredTrashIds).eq('user_id', user.id).then(({ error }) => {
                             if (error) console.error('Failed to auto-delete expired trash', error);
                         });
@@ -1095,6 +1168,10 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         if (s.key === 'incomeStartDate') setIncomeStartDateState(s.value);
                         if (s.key === 'currency') setCurrencyState(s.value);
                         if (s.key === 'username') setUsernameState(s.value);
+                        if (s.key === 'trackingMode') setTrackingModeState(s.value as TrackingMode);
+                        if (s.key === 'accounts') {
+                            try { setAccounts(JSON.parse(s.value)); } catch (e) { console.error("Error parsing accounts", e); }
+                        }
                         if (s.key === 'dismissedWarnings') {
                             try {
                                 setDismissedWarnings(JSON.parse(s.value));
@@ -1152,8 +1229,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
         } catch (e) {
             console.error('Failed to load data', e);
+            setLoading(false); // Ensure loading is cleared on error
         } finally {
-            setLoading(false);
+            // Removed setloading from here to avoid blocking
         }
     }, [user, processRecurringTransactions]);
 
@@ -1212,6 +1290,65 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     }, [user, isOffline, addToQueue]);
 
+    const setTrackingMode = useCallback((mode: TrackingMode) => {
+        setTrackingModeState(mode);
+        saveData('trackingMode', mode);
+        if (user && !isGuest) {
+            if (isOffline) {
+                addToQueue({ type: 'SET_TRACKING_MODE', payload: mode });
+            } else {
+                supabase.from('user_settings').upsert({ key: 'trackingMode', value: mode, user_id: user.id }).then(({ error }) => {
+                    if (error) addToQueue({ type: 'SET_TRACKING_MODE', payload: mode });
+                });
+            }
+        }
+    }, [user, isGuest, isOffline, addToQueue]);
+
+    const addAccount = useCallback(async (account: Omit<Account, 'id' | 'balance'>) => {
+        const newAccount: Account = { ...account, id: Crypto.randomUUID(), balance: account.initialBalance }; // Init balance = initial
+        const updated = [...accounts, newAccount];
+        setAccounts(updated);
+        saveData('accounts', updated);
+
+        if (user && !isGuest) {
+            if (isOffline) {
+                addToQueue({ type: 'ADD_ACCOUNT', payload: updated });
+            } else {
+                await supabase.from('user_settings').upsert({ key: 'accounts', value: JSON.stringify(updated), user_id: user.id });
+            }
+        }
+    }, [accounts, user, isGuest, isOffline, addToQueue]);
+
+    const updateAccount = useCallback(async (id: string, updates: Partial<Account>) => {
+        const updated = accounts.map(a => a.id === id ? { ...a, ...updates } : a);
+        setAccounts(updated);
+        saveData('accounts', updated);
+
+        // Recalculate balances immediately because initialBalance might have changed
+        recalculateAccountBalances(transactions, updated);
+
+        if (user && !isGuest) {
+            if (isOffline) {
+                addToQueue({ type: 'UPDATE_ACCOUNT', payload: updated });
+            } else {
+                await supabase.from('user_settings').upsert({ key: 'accounts', value: JSON.stringify(updated), user_id: user.id });
+            }
+        }
+    }, [accounts, transactions, user, isGuest, isOffline, addToQueue, recalculateAccountBalances]);
+
+    const deleteAccount = useCallback(async (id: string) => {
+        const updated = accounts.filter(a => a.id !== id);
+        setAccounts(updated);
+        saveData('accounts', updated);
+        if (user && !isGuest) {
+            if (isOffline) {
+                addToQueue({ type: 'DELETE_ACCOUNT', payload: updated });
+            } else {
+                await supabase.from('user_settings').upsert({ key: 'accounts', value: JSON.stringify(updated), user_id: user.id });
+            }
+        }
+    }, [accounts, user, isGuest, isOffline, addToQueue]);
+
     useEffect(() => {
         loadData();
     }, [loadData]);
@@ -1224,6 +1361,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, [user, isOffline, syncQueue.length, processQueue]);
 
 
+
     const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
         const newTransaction: Transaction = { ...transaction, id: Crypto.randomUUID(), deletedAt: null };
         const updated = [newTransaction, ...transactions];
@@ -1233,9 +1371,11 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         checkAchievements(updated);
         checkBudgetAndNotify(updated, budget, income);
 
+        // Recalculate balances
+        recalculateAccountBalances(updated, accounts);
+
         // Trigger recurring processing
         if (newTransaction.isRecurring) {
-
             processRecurringTransactions(updated);
         }
 
@@ -1250,7 +1390,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [transactions, checkAchievements, user, processRecurringTransactions, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
+    }, [transactions, checkAchievements, user, processRecurringTransactions, checkBudgetAndNotify, budget, income, isOffline, addToQueue, accounts, recalculateAccountBalances]);
 
     const editTransaction = useCallback(async (id: string, updates: Partial<Transaction>) => {
         let updatedTransaction: Transaction | undefined;
@@ -1272,7 +1412,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             futureUpdates = updated.filter(t => t.parentId === id && new Date(t.date) > now);
 
             if (futureUpdates.length > 0) {
-                // Apply relevant updates to future instances (exclude id, date, etc.)
                 const { id: _id, date: _date, isRecurring: _isRecurring, nextOccurrence: _nextOccurrence, parentId: _parentId, ...propUpdates } = updates;
 
                 finalUpdated = updated.map(t => {
@@ -1288,6 +1427,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         saveData('transactions', finalUpdated);
         checkAchievements(finalUpdated);
         checkBudgetAndNotify(finalUpdated, budget, income);
+
+        // Recalculate balances with the NEW list
+        recalculateAccountBalances(finalUpdated, accounts);
 
         if (updatedTransaction && user && !isGuest) {
             if (isOffline) {
@@ -1319,43 +1461,39 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [transactions, checkAchievements, user, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
+    }, [transactions, checkAchievements, user, checkBudgetAndNotify, budget, income, isOffline, addToQueue, accounts, recalculateAccountBalances]);
 
     const deleteTransaction = useCallback(async (id: string) => {
         let deletedTransaction: Transaction | undefined;
         let futureDeletions: Transaction[] = [];
 
-        setTransactions(prev => {
-            const toDelete = prev.find(t => t.id === id);
-            if (!toDelete) return prev;
+        const toDelete = transactions.find(t => t.id === id);
+        if (!toDelete) return;
 
-            // 1. Soft delete the target
-            deletedTransaction = { ...toDelete, deletedAt: new Date().toISOString() };
+        deletedTransaction = { ...toDelete, deletedAt: new Date().toISOString() };
+        let updated = transactions.filter(t => t.id !== id);
 
-            // 2. If recurring, find future instances to delete
-            let updated = prev.filter(t => t.id !== id);
+        if (toDelete.isRecurring) {
+            const now = new Date();
+            futureDeletions = transactions.filter(t => t.parentId === id && new Date(t.date) > now);
+            updated = updated.filter(t => !(t.parentId === id && new Date(t.date) > now));
+        }
 
-            if (toDelete.isRecurring) {
-                const now = new Date();
-                futureDeletions = prev.filter(t => t.parentId === id && new Date(t.date) > now);
-                updated = updated.filter(t => !(t.parentId === id && new Date(t.date) > now));
-            }
+        setTransactions(updated);
+        saveData('transactions', updated);
+        checkBudgetAndNotify(updated, budget, income);
+        recalculateAccountBalances(updated, accounts);
 
-            saveData('transactions', updated);
-            checkBudgetAndNotify(updated, budget, income);
-
-            setTrash(prevTrash => {
-                const newTrashItems = [deletedTransaction!, ...futureDeletions.map(t => ({ ...t, deletedAt: new Date().toISOString() }))];
-                const newTrash = [...newTrashItems, ...prevTrash];
-                saveData('trash', newTrash);
-                return newTrash;
-            });
-            return updated;
+        setTrash(prevTrash => {
+            const newTrashItems = [deletedTransaction!, ...futureDeletions.map(t => ({ ...t, deletedAt: new Date().toISOString() }))];
+            const newTrash = [...newTrashItems, ...prevTrash];
+            saveData('trash', newTrash);
+            return newTrash;
         });
 
         if (deletedTransaction && user && !isGuest) {
             if (isOffline) {
-                addToQueue({ type: 'DELETE_TRANSACTION', payload: deletedTransaction }); // Soft delete, needs deletedAt and ID
+                addToQueue({ type: 'DELETE_TRANSACTION', payload: deletedTransaction });
                 futureDeletions.forEach(futureTx => {
                     addToQueue({ type: 'DELETE_TRANSACTION', payload: { ...futureTx, deletedAt: new Date().toISOString() } });
                 });
@@ -1377,24 +1515,27 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
+    }, [transactions, user, checkBudgetAndNotify, budget, income, isOffline, addToQueue, accounts, recalculateAccountBalances]);
 
     const restoreTransaction = useCallback(async (id: string) => {
         let restoredTransaction: Transaction | undefined;
-        setTrash(prev => {
-            const toRestore = prev.find(t => t.id === id);
-            if (!toRestore) return prev;
-            const newTrash = prev.filter(t => t.id !== id);
-            saveData('trash', newTrash);
-            restoredTransaction = { ...toRestore, deletedAt: null };
-            setTransactions(prevTrans => {
-                const newTrans = [restoredTransaction!, ...prevTrans];
-                saveData('transactions', newTrans);
-                checkBudgetAndNotify(newTrans, budget, income);
-                return newTrans;
-            });
-            return newTrash;
-        });
+
+        // Get from trash first
+        const toRestore = trash.find(t => t.id === id);
+        if (!toRestore) return;
+
+        const newTrash = trash.filter(t => t.id !== id);
+        setTrash(newTrash);
+        saveData('trash', newTrash);
+
+        restoredTransaction = { ...toRestore, deletedAt: null };
+        const newTrans = [restoredTransaction!, ...transactions];
+
+        setTransactions(newTrans);
+        saveData('transactions', newTrans);
+        checkBudgetAndNotify(newTrans, budget, income);
+
+        recalculateAccountBalances(newTrans, accounts);
 
         if (restoredTransaction && user && !isGuest) {
             if (isOffline) {
@@ -1407,7 +1548,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 }
             }
         }
-    }, [user, checkBudgetAndNotify, budget, income, isOffline, addToQueue]);
+    }, [user, checkBudgetAndNotify, budget, income, isOffline, addToQueue, trash, transactions, accounts, recalculateAccountBalances]);
 
     const permanentDeleteTransaction = useCallback(async (id: string) => {
         setTrash(prev => {
@@ -1885,9 +2026,15 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 completeTutorial,
                 username,
                 setUsername,
-            }}
-        >
+                trackingMode,
+                setTrackingMode,
+                accounts,
+                addAccount,
+                updateAccount,
+                deleteAccount
+            }}>
             {children}
         </ExpenseContext.Provider>
     );
 };
+

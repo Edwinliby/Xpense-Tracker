@@ -122,7 +122,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             const redirectUrl = makeRedirectUri({
                 path: 'auth/callback',
-                scheme: 'xpense',
+                scheme: 'expensetracker',
             });
 
             console.log('Redirecting to:', redirectUrl);

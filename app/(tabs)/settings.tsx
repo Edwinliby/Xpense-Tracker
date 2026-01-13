@@ -1,6 +1,6 @@
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { SectionHeader, Separator, SettingsCard, SettingsHeroCard, SettingsItem } from '@/components/SettingsComponents';
+import { SectionHeader, Separator, SettingsCard, SettingsItem } from '@/components/SettingsComponents';
 import { UserLevelWidget } from '@/components/UserLevelWidget';
 import { useStyles } from '@/constants/Styles';
 import { useAlert } from '@/context/AlertContext';
@@ -16,10 +16,11 @@ import {
     Calendar,
     Monitor,
     Moon,
-    Sun
+    Sun,
+    TrendingUp
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -40,8 +41,11 @@ export default function SettingsScreen() {
         currencySymbol,
         achievements,
         categories,
+        accounts,
         trash,
         username,
+        trackingMode,
+        setTrackingMode,
     } = useExpense();
 
     const [budgetInput, setBudgetInput] = useState('');
@@ -142,106 +146,91 @@ export default function SettingsScreen() {
                 <Text style={[Styles.title, { marginBottom: 0, fontFamily: 'Geist-Bold', fontSize: 32, letterSpacing: -0.5 }]}>Settings</Text>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 16 }}>
                 {/* Section: Financial Profile (HERO) */}
                 <UserLevelWidget achievements={achievements} onPress={() => router.push('/achievements')} variant="compact" username={username} />
 
                 <SectionHeader title="Financial Profile" />
-                <SettingsHeroCard>
-                    <View style={{ gap: 24 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={{ color: Colors.textSecondary, fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Income</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={{ color: Colors.text, fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
-                                    <View style={{ flex: 1 }}>
-                                        <Input
-                                            value={incomeInput}
-                                            onChangeText={handleIncomeChange}
-                                            keyboardType="numeric"
-                                            placeholder="0"
-                                            containerStyle={{ marginBottom: 0 }}
-                                            style={{
-                                                backgroundColor: Colors.surfaceHighlight,
-                                                borderWidth: 0,
-                                                height: 44,
-                                                width: '100%',
-                                                padding: 0,
-                                                paddingHorizontal: 12,
-                                            }}
-                                            inputStyle={{
-                                                color: Colors.text,
-                                                fontSize: 24,
-                                                fontFamily: 'Geist-Bold',
-                                                paddingVertical: 0,
-                                                height: '100%',
-                                            }}
-                                            placeholderTextColor={Colors.textSecondary}
-                                        />
-                                    </View>
+                <SettingsCard noPadding>
+                    {/* 1. Net Worth Tracking Toggle */}
+                    <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ gap: 4, flex: 1 }}>
+                            <Text style={{ color: Colors.text, fontSize: 16, fontFamily: 'Geist-SemiBold' }}>Track Net Worth</Text>
+                            <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>Switch between total balance or budget tracking</Text>
+                        </View>
+                        <Switch
+                            value={trackingMode === 'account_balance'}
+                            onValueChange={(val) => setTrackingMode(val ? 'account_balance' : 'monthly_budget')}
+                            trackColor={{ false: Colors.surfaceHighlight, true: Colors.primary }}
+                            thumbColor={Colors.surface}
+                        />
+                    </View>
+
+                    <Separator />
+
+                    {/* 2. Monthly Cash Flow Inputs */}
+                    <View style={{ padding: 16, gap: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <TrendingUp size={14} color={Colors.primary} />
+                            <Text style={{ fontSize: 12, color: Colors.primary, fontFamily: 'Geist-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                Monthly Targets
+                            </Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 16 }}>
+                            {/* Income */}
+                            <View style={{ flex: 1, gap: 8 }}>
+                                <Text style={{ fontSize: 12, color: Colors.textSecondary, fontFamily: 'Geist-Medium' }}>Income</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: 8 }}>
+                                    <Text style={{ fontSize: 16, color: Colors.textSecondary, fontFamily: 'Geist-Medium', marginRight: 4 }}>{currencySymbol}</Text>
+                                    <Input
+                                        value={incomeInput}
+                                        onChangeText={handleIncomeChange}
+                                        keyboardType="numeric"
+                                        placeholder="0"
+                                        containerStyle={{ marginBottom: 0, flex: 1 }}
+                                        style={{ backgroundColor: 'transparent', borderWidth: 0, height: 24, padding: 0 }}
+                                        inputStyle={{ color: Colors.text, fontSize: 18, fontFamily: 'Geist-Bold', paddingVertical: 0, height: '100%' }}
+                                        placeholderTextColor={Colors.textSecondary}
+                                    />
                                 </View>
                             </View>
-                            <View style={{ height: 40, width: 1, backgroundColor: Colors.border }} />
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={{ color: Colors.textSecondary, fontSize: 13, fontFamily: 'Geist-Medium', marginBottom: 4 }} numberOfLines={1} adjustsFontSizeToFit>Monthly Budget</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={{ color: Colors.text, fontSize: 24, fontFamily: 'Geist-Bold', marginRight: 4 }}>{currencySymbol}</Text>
-                                    <View style={{ flex: 1 }}>
-                                        <Input
-                                            value={budgetInput}
-                                            onChangeText={handleBudgetChange}
-                                            keyboardType="numeric"
-                                            placeholder="0"
-                                            containerStyle={{ marginBottom: 0 }}
-                                            style={{
-                                                backgroundColor: Colors.surfaceHighlight,
-                                                borderWidth: 0,
-                                                height: 44,
-                                                width: '100%',
-                                                padding: 0,
-                                                paddingHorizontal: 12,
-                                            }}
-                                            inputStyle={{
-                                                color: Colors.text,
-                                                fontSize: 24,
-                                                fontFamily: 'Geist-Bold',
-                                                paddingVertical: 0,
-                                                height: '100%',
-                                            }}
-                                            placeholderTextColor={Colors.textSecondary}
-                                        />
-                                    </View>
+
+                            {/* Budget */}
+                            <View style={{ flex: 1, gap: 8 }}>
+                                <Text style={{ fontSize: 12, color: Colors.textSecondary, fontFamily: 'Geist-Medium' }}>Budget</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: 8 }}>
+                                    <Text style={{ fontSize: 16, color: Colors.textSecondary, fontFamily: 'Geist-Medium', marginRight: 4 }}>{currencySymbol}</Text>
+                                    <Input
+                                        value={budgetInput}
+                                        onChangeText={handleBudgetChange}
+                                        keyboardType="numeric"
+                                        placeholder="0"
+                                        containerStyle={{ marginBottom: 0, flex: 1 }}
+                                        style={{ backgroundColor: 'transparent', borderWidth: 0, height: 24, padding: 0 }}
+                                        inputStyle={{ color: Colors.text, fontSize: 18, fontFamily: 'Geist-Bold', paddingVertical: 0, height: '100%' }}
+                                        placeholderTextColor={Colors.textSecondary}
+                                    />
                                 </View>
                             </View>
                         </View>
 
-                        <View style={{ height: 1, backgroundColor: Colors.border }} />
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Income Duration</Text>
+                        {/* Config Row */}
+                        <View style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>
+                            <View style={{ flex: 1, gap: 8 }}>
+                                <Text style={{ fontSize: 12, color: Colors.textSecondary, fontFamily: 'Geist-Medium' }}>Duration (Months)</Text>
                                 <Input
                                     value={incomeDurationInput}
                                     onChangeText={handleIncomeDurationChange}
                                     keyboardType="numeric"
                                     placeholder="12"
                                     containerStyle={{ marginBottom: 0 }}
-                                    style={{
-                                        backgroundColor: Colors.surfaceHighlight,
-                                        borderWidth: 0,
-                                        height: 36
-                                    }}
-                                    inputStyle={{
-                                        color: Colors.text,
-                                        fontSize: 14,
-                                        paddingVertical: 0,
-                                        height: '100%',
-                                    }}
-                                    placeholderTextColor={Colors.textSecondary}
+                                    style={{ backgroundColor: Colors.surfaceHighlight, borderWidth: 0, height: 36, borderRadius: 8, paddingHorizontal: 12 }}
+                                    inputStyle={{ fontSize: 14, fontFamily: 'Geist-SemiBold', paddingVertical: 0, height: '100%' }}
                                 />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 6 }}>Start Date</Text>
+                            <View style={{ flex: 1, gap: 8 }}>
+                                <Text style={{ fontSize: 12, color: Colors.textSecondary, fontFamily: 'Geist-Medium' }}>Start Date</Text>
                                 <TouchableOpacity
                                     onPress={() => Platform.OS !== 'web' && setShowDatePicker(true)}
                                     style={{
@@ -254,15 +243,27 @@ export default function SettingsScreen() {
                                         justifyContent: 'space-between'
                                     }}
                                 >
-                                    <Text style={{ color: Colors.text, fontSize: 14, fontFamily: 'Geist-Medium' }}>
-                                        {incomeStartDate || 'Select'}
+                                    <Text style={{ color: Colors.text, fontSize: 13, fontFamily: 'Geist-SemiBold' }}>
+                                        {incomeStartDate || 'Select Date'}
                                     </Text>
                                     <Calendar size={14} color={Colors.textSecondary} />
                                 </TouchableOpacity>
                             </View>
                         </View>
                     </View>
-                </SettingsHeroCard>
+
+                    {trackingMode === 'account_balance' && (
+                        <>
+                            <Separator />
+                            <SettingsItem
+                                icon="Wallet"
+                                title="Manage Accounts"
+                                subtitle={`${accounts.length} accounts linked`}
+                                onPress={() => router.push('/accounts')}
+                            />
+                        </>
+                    )}
+                </SettingsCard>
 
                 {/* Section: Preferences */}
                 <SectionHeader title="Preferences" />
@@ -301,7 +302,7 @@ export default function SettingsScreen() {
                             </View>
                         }
                     />
-                    <Separator />
+
                     <SettingsItem
                         icon="CircleDollarSign"
                         title="Currency"
@@ -386,7 +387,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
     header: {
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
         paddingBottom: 8,
     },
     categoryGrid: {

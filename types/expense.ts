@@ -23,6 +23,7 @@ export interface Transaction {
   parentId?: string;
   excludeFromBudget?: boolean;
   note?: string;
+  accountId?: string;
 }
 
 export interface Category {
@@ -45,4 +46,19 @@ export interface SavingsGoal {
   priority: number; // Lower number = Higher priority
   year: number; // The year this goal belongs to
   startMonth: number; // 0-11 (Jan-Dec)
+}
+
+export type TrackingMode = "monthly_budget" | "account_balance";
+
+export type AccountType = string;
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number; // Current calculated balance
+  initialBalance: number; // Starting balance
+  currency: string;
+  color: string;
+  icon: string;
 }

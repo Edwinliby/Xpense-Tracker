@@ -39,13 +39,8 @@ export const BudgetWidget: React.FC<BudgetWidgetProps> = ({
     // Chart Data
     const pieData = useMemo(() => {
         if (budget === 0) {
-            // Empty state placeholder data
             return [{ value: 100, color: Colors.surfaceHighlight }];
         }
-
-        // If over budget, we show full circle as "spent" color (maybe pulsing or static danger)
-        // But Gifted Charts Pie doesn't support value > max naturally in a donut way like "overflow".
-        // We will cap 'value' at 100 for visual filling, but text handles reality.
 
         let filled = 0;
         let empty = 0;
@@ -85,7 +80,7 @@ export const BudgetWidget: React.FC<BudgetWidgetProps> = ({
             <TouchableOpacity
                 onPress={onPress}
                 activeOpacity={0.8}
-                style={[styles.container, styles.emptyContainer, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}
+                style={[styles.container, styles.emptyContainer, { backgroundColor: Colors.surface, borderWidth: .5, borderColor: Colors.border }]}
             >
                 <View style={[styles.iconCircle, { backgroundColor: Colors.surfaceHighlight }]}>
                     <Wallet size={24} color={Colors.primary} />
@@ -104,7 +99,7 @@ export const BudgetWidget: React.FC<BudgetWidgetProps> = ({
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+        <View style={[styles.container, { backgroundColor: Colors.surface, shadowColor: Colors.border, borderWidth: .5, borderColor: Colors.border }]}>
 
             {/* Header Row */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -202,10 +197,6 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         marginHorizontal: 16,
         marginBottom: 20,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
     },
     emptyContainer: {
         flexDirection: 'row',

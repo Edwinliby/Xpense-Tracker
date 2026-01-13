@@ -8,7 +8,9 @@ import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
 import { addMonths, differenceInMonths, endOfMonth, format, getDaysInMonth, isWithinInterval, parseISO, startOfMonth, subMonths } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import * as Icons from 'lucide-react-native';
 import { ChevronLeft, ChevronRight, Search, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -17,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function DashboardScreen() {
   const Styles = useStyles();
   const Colors = useThemeColor();
-  const { transactions, budget, income, incomeDuration, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement, hasSeenTutorial, completeTutorial, loading, username } = useExpense();
+  const { transactions, budget, income, incomeDuration, incomeStartDate, editTransaction, deleteTransaction, currencySymbol, newlyUnlockedAchievement, clearNewlyUnlockedAchievement, hasSeenTutorial, completeTutorial, loading, username, trackingMode, accounts } = useExpense();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -429,6 +431,10 @@ export default function DashboardScreen() {
     return width - 40; // Mobile default
   }, [width, isDesktop]);
 
+  const netWorth = useMemo(() => {
+    return accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  }, [accounts]);
+
 
 
   return (
@@ -462,54 +468,153 @@ export default function DashboardScreen() {
 
             {/* --- Summary Cards Section --- */}
             <View style={styles.summarySection}>
-              <View style={[styles.summaryCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <View>
-                    <Text style={[styles.label, { color: Colors.textSecondary }]}>Total Spent</Text>
-                    <Text style={[styles.amount, { color: Colors.text }]}>{currencySymbol}{displaySpent.toLocaleString()}</Text>
+              {trackingMode === 'account_balance' ? (
+                <LinearGradient
+                  colors={[Colors.primaryDark, '#000000ff']} // Deep premium gradient
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.summaryCard, Styles.shadow, { overflow: 'hidden' }]}
+                >
+                  <View style={{ paddingHorizontal: 20 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, fontFamily: 'Geist-Medium', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+                      Total Net Worth
+                    </Text>
+                    <Text style={{ color: '#fff', fontSize: 42, fontFamily: 'Geist-Bold', marginTop: 8, letterSpacing: -1.5 }}>
+                      {currencySymbol}{netWorth.toLocaleString()}
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 4 }}>
+                      Combined balance across {accounts.length} accounts
+                    </Text>
                   </View>
-                  {/* Remaining / Saved */}
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[styles.label, { color: Colors.textSecondary }]}>Remaining</Text>
-                    {(viewMode === 'monthly' || activeMonthsCount > 0) ? (
-                      (income > 0 && (viewMode === 'monthly' ? isWithinIncomePeriod(monthRange.start) : true)) ? (
-                        <>
-                          <Text style={[styles.amount, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
-                            {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
-                          </Text>
-                          {viewMode === 'yearly' && (
-                            <Text style={{ fontSize: 10, color: Colors.textSecondary, marginTop: 2, opacity: 0.8 }}>
-                              {activeMonthsCount} Month{activeMonthsCount !== 1 ? 's' : ''} • {currencySymbol}{(displaySaved + activeYearlyTotalSpent).toLocaleString()}
+
+                  <View style={{ marginTop: 20 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.6)', paddingHorizontal: 20, fontSize: 12, fontFamily: 'Geist-Medium', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                      Your Accounts
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 20 }}>
+                      {accounts.map((acc) => {
+                        const IconComponent = (Icons as any)[acc.icon] || Icons.Wallet;
+                        return (
+                          <View key={acc.id} style={{
+                            backgroundColor: 'rgba(255,255,255,0.08)',
+                            padding: 8,
+                            paddingHorizontal: 10,
+                            borderRadius: 14,
+                            minWidth: 100,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.08)'
+                          }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
+                              <View style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 7,
+                                backgroundColor: acc.color + '20', // Low opacity background
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                              }}>
+                                <IconComponent size={12} color={acc.color} />
+                              </View>
+                              <Text style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Geist-Medium', fontSize: 10, flex: 1 }} numberOfLines={1}>
+                                {acc.name}
+                              </Text>
+                            </View>
+                            <Text style={{ color: '#fff', fontFamily: 'Geist-SemiBold', fontSize: 13, letterSpacing: -0.3 }}>
+                              {currencySymbol}{acc.balance.toLocaleString()}
                             </Text>
-                          )}
-                        </>
+                          </View>
+                        );
+                      })}
+
+                      {/* Add New Account Card */}
+                      <TouchableOpacity
+                        onPress={() => router.push('/manage-account')}
+                        style={{
+                          backgroundColor: 'rgba(255,255,255,0.05)',
+                          padding: 8,
+                          borderRadius: 14,
+                          minWidth: 100,
+                          borderWidth: 1,
+                          borderColor: 'rgba(255,255,255,0.1)',
+                          borderStyle: 'dashed',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: 8
+                        }}
+                      >
+                        <View style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}>
+                          <Icons.Plus size={14} color="#fff" />
+                        </View>
+                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Geist-Medium', fontSize: 11 }}>
+                          Add New
+                        </Text>
+                      </TouchableOpacity>
+
+                      {accounts.length === 0 && (
+                        <View style={{ padding: 10, width: '100%' }}>
+                          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>No accounts added</Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                </LinearGradient>
+              ) : (
+                <View style={[styles.summaryCard, Styles.shadow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16 }}>
+                    <View>
+                      <Text style={[styles.label, { color: Colors.textSecondary }]}>Total Spent</Text>
+                      <Text style={[styles.amount, { color: Colors.text }]}>{currencySymbol}{displaySpent.toLocaleString()}</Text>
+                    </View>
+                    {/* Remaining / Saved */}
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.label, { color: Colors.textSecondary }]}>Remaining</Text>
+                      {(viewMode === 'monthly' || activeMonthsCount > 0) ? (
+                        (income > 0 && (viewMode === 'monthly' ? isWithinIncomePeriod(monthRange.start) : true)) ? (
+                          <>
+                            <Text style={[styles.amount, { color: displaySaved >= 0 ? Colors.success : Colors.danger }]}>
+                              {displaySaved > 0 ? '+' : ''}{currencySymbol}{displaySaved.toLocaleString()}
+                            </Text>
+                            {viewMode === 'yearly' && (
+                              <Text style={{ fontSize: 10, color: Colors.textSecondary, marginTop: 2, opacity: 0.8 }}>
+                                {activeMonthsCount} Month{activeMonthsCount !== 1 ? 's' : ''} • {currencySymbol}{(displaySaved + activeYearlyTotalSpent).toLocaleString()}
+                              </Text>
+                            )}
+                          </>
+                        ) : (
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
+                            <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
+                          </View>
+                        )
                       ) : (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
                           <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
                         </View>
-                      )
-                    ) : (
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={[styles.amount, { color: Colors.text, fontSize: 28, lineHeight: 34 }]}>∞</Text>
-                        <Text style={{ color: Colors.textSecondary, fontSize: 10, marginLeft: 4, transform: [{ translateY: 4 }] }}>No Limit</Text>
-                      </View>
-                    )}
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Chart Area */}
+                  <View style={styles.chartWrapper}>
+                    <HomeChart
+                      data={viewMode === 'monthly' ? currentMonthLineData : chartData}
+                      data2={viewMode === 'monthly' ? previousMonthLineData : undefined}
+                      viewMode={viewMode}
+                      maxValue={viewMode === 'monthly' ? maxMonthlyValue : maxYearlyValue}
+                      currencySymbol={currencySymbol}
+                      width={chartWidth}
+                    />
                   </View>
                 </View>
-
-                {/* Chart Area */}
-                <View style={styles.chartWrapper}>
-                  <HomeChart
-                    data={viewMode === 'monthly' ? currentMonthLineData : chartData}
-                    data2={viewMode === 'monthly' ? previousMonthLineData : undefined}
-                    viewMode={viewMode}
-                    maxValue={viewMode === 'monthly' ? maxMonthlyValue : maxYearlyValue}
-                    currencySymbol={currencySymbol}
-                    width={chartWidth}
-                  />
-                </View>
-              </View>
+              )}
             </View>
 
 
@@ -535,15 +640,15 @@ export default function DashboardScreen() {
                 But for now let's place it top of Right Column or stick with mobile flow.
                 Actually, putting it above the chart in Left Column makes more semantic sense for the chart.
                 But let's stick to simple first: Right Column top. */}
-            <View style={{ marginBottom: 6, marginHorizontal: 16 }}>
+            <View style={{ marginBottom: 20, marginHorizontal: 16 }}>
               <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 backgroundColor: Colors.surface,
-                borderRadius: 20,
+                borderRadius: 16,
                 padding: 6,
-                borderWidth: 1,
+                borderWidth: .5,
                 borderColor: Colors.border,
               }}>
                 {/* View Mode Toggle (Left) */}
@@ -563,7 +668,7 @@ export default function DashboardScreen() {
                       shadowOffset: { width: 0, height: 1 },
                       shadowOpacity: viewMode === 'monthly' ? 0.1 : 0,
                       shadowRadius: 2,
-                      borderWidth: 1,
+                      borderWidth: .5,
                       borderColor: viewMode === 'monthly' ? 'rgba(0,0,0,0.05)' : 'transparent',
                     }}
                     onPress={() => setViewMode('monthly')}
@@ -681,7 +786,7 @@ export default function DashboardScreen() {
               const totalOwed = owedTransactions.reduce((acc, t) => acc + t.amount, 0);
 
               return (
-                <View style={{ gap: 16, marginBottom: 24 }}>
+                <View style={{ gap: 10, marginBottom: 24 }}>
                   {totalLent > 0 && (
                     <DebtCreditCard
                       type="owed"
@@ -851,10 +956,9 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     borderRadius: 24,
-    paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 5,
-    minHeight: 180,
+    paddingBottom: 20,
+    minHeight: 160,
   },
   label: {
     fontSize: 12,

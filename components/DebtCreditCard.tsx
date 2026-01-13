@@ -14,19 +14,11 @@ interface DebtCreditCardProps {
 }
 
 const styles = StyleSheet.create({
-    sectionContainer: {
-        marginBottom: 24,
-    },
     card: {
         marginHorizontal: 16,
         borderRadius: 20,
         padding: 20,
-        borderWidth: 1,
-        // shadowColor set dynamically in component
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 3,
+        borderWidth: .5,
     },
     header: {
         flexDirection: 'row',
@@ -121,88 +113,86 @@ export const DebtCreditCard: React.FC<DebtCreditCardProps> = ({
     if (amount <= 0) return null;
 
     return (
-        <View style={styles.sectionContainer}>
-            <View style={[
-                styles.card,
-                {
-                    backgroundColor: Colors.surface,
-                    borderColor: Colors.border,
-                    shadowColor: Colors.shadow,
-                }
-            ]}>
-                <TouchableOpacity
-                    style={[styles.header, { marginBottom: isExpanded ? 20 : 0 }]}
-                    onPress={() => setIsExpanded(!isExpanded)}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.headerLeft}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <View style={{ width: 3, height: 14, backgroundColor: accentColor, borderRadius: 2 }} />
-                            <Text style={[styles.title, { color: Colors.text }]}>{title}</Text>
-                        </View>
-                        <Text style={[styles.subtitle, { color: Colors.textSecondary, paddingLeft: 9 }]}>{subtitle}</Text>
+        <View style={[
+            styles.card,
+            {
+                backgroundColor: Colors.surface,
+                borderColor: Colors.border,
+                shadowColor: Colors.shadow,
+            }
+        ]}>
+            <TouchableOpacity
+                style={[styles.header, { marginBottom: isExpanded ? 20 : 0 }]}
+                onPress={() => setIsExpanded(!isExpanded)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.headerLeft}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={{ width: 3, height: 14, backgroundColor: accentColor, borderRadius: 2 }} />
+                        <Text style={[styles.title, { color: Colors.text }]}>{title}</Text>
                     </View>
+                    <Text style={[styles.subtitle, { color: Colors.textSecondary, paddingLeft: 9 }]}>{subtitle}</Text>
+                </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={[styles.totalValue, { color: accentColor }]}>
-                            {currencySymbol}{amount.toLocaleString()}
-                        </Text>
-                        {isExpanded ? (
-                            <ChevronUp size={20} color={accentColor} />
-                        ) : (
-                            <ChevronDown size={20} color={accentColor} />
-                        )}
-                    </View>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[styles.totalValue, { color: accentColor }]}>
+                        {currencySymbol}{amount.toLocaleString()}
+                    </Text>
+                    {isExpanded ? (
+                        <ChevronUp size={20} color={accentColor} />
+                    ) : (
+                        <ChevronDown size={20} color={accentColor} />
+                    )}
+                </View>
+            </TouchableOpacity>
 
-                {isExpanded && (
-                    <View style={styles.list}>
-                        {transactions.map((t, index) => {
-                            const isLast = index === transactions.length - 1;
-                            return (
-                                <View key={t.id} style={[
-                                    styles.row,
-                                    {
-                                        borderBottomColor: isLast ? 'transparent' : Colors.borderLight,
-                                        paddingBottom: isLast ? 0 : 12,
-                                        paddingTop: index === 0 ? 0 : 12
-                                    }
-                                ]}>
-                                    <View style={styles.info}>
-                                        <View style={[
-                                            styles.avatar,
-                                            { backgroundColor: isOwed ? Colors.success + '15' : Colors.danger + '15' }
-                                        ]}>
-                                            <Text style={[styles.avatarText, { color: accentColor }]}>
-                                                {(isOwed ? t.lentTo : t.paidBy)?.[0]?.toUpperCase()}
-                                            </Text>
-                                        </View>
-                                        <View>
-                                            <Text style={[styles.name, { color: Colors.text }]}>{isOwed ? t.lentTo : t.paidBy}</Text>
-                                            <Text style={[styles.date, { color: Colors.textSecondary }]}>{format(new Date(t.date), 'MMM d')}</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Text style={[styles.amountText, { color: Colors.text }]}>
-                                            {currencySymbol}{t.amount.toLocaleString()}
+            {isExpanded && (
+                <View style={styles.list}>
+                    {transactions.map((t, index) => {
+                        const isLast = index === transactions.length - 1;
+                        return (
+                            <View key={t.id} style={[
+                                styles.row,
+                                {
+                                    borderBottomColor: isLast ? 'transparent' : Colors.borderLight,
+                                    paddingBottom: isLast ? 0 : 12,
+                                    paddingTop: index === 0 ? 0 : 12
+                                }
+                            ]}>
+                                <View style={styles.info}>
+                                    <View style={[
+                                        styles.avatar,
+                                        { backgroundColor: isOwed ? Colors.success + '15' : Colors.danger + '15' }
+                                    ]}>
+                                        <Text style={[styles.avatarText, { color: accentColor }]}>
+                                            {(isOwed ? t.lentTo : t.paidBy)?.[0]?.toUpperCase()}
                                         </Text>
-                                        <TouchableOpacity
-                                            style={[styles.settleBtn, { borderColor: Colors.border, backgroundColor: Colors.surfaceHighlight }]}
-                                            onPress={() => onSettle(t.id)}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        >
-                                            <Text style={[styles.settleText, { color: Colors.text }]}>
-                                                {isOwed ? 'Settle' : 'Pay'}
-                                            </Text>
-                                        </TouchableOpacity>
+                                    </View>
+                                    <View>
+                                        <Text style={[styles.name, { color: Colors.text }]}>{isOwed ? t.lentTo : t.paidBy}</Text>
+                                        <Text style={[styles.date, { color: Colors.textSecondary }]}>{format(new Date(t.date), 'MMM d')}</Text>
                                     </View>
                                 </View>
-                            );
-                        })}
-                    </View>
-                )}
-            </View>
+
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={[styles.amountText, { color: Colors.text }]}>
+                                        {currencySymbol}{t.amount.toLocaleString()}
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={[styles.settleBtn, { borderColor: Colors.border, backgroundColor: Colors.surfaceHighlight }]}
+                                        onPress={() => onSettle(t.id)}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                        <Text style={[styles.settleText, { color: Colors.text }]}>
+                                            {isOwed ? 'Settle' : 'Pay'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        );
+                    })}
+                </View>
+            )}
         </View>
     );
 };

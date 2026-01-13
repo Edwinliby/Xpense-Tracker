@@ -1,12 +1,10 @@
 import { CategoryPieChartWidget } from '@/components/analytics/CategoryPieChartWidget';
-import { DayOfWeekWidget } from '@/components/analytics/DayOfWeekWidget';
-import { FinancialHealthWidget } from '@/components/analytics/FinancialHealthWidget';
 import { FinancialKPIsWidget } from '@/components/analytics/FinancialKPIsWidget';
 import { LifetimeStatsWidget } from '@/components/analytics/LifetimeStatsWidget';
 import { MonthComparisonWidget } from '@/components/analytics/MonthComparisonWidget';
-import { QuickInsightsWidget } from '@/components/analytics/QuickInsightsWidget';
 import { SpendingTrendsWidget } from '@/components/analytics/SpendingTrendsWidget';
 import { TopCategoriesWidget } from '@/components/analytics/TopCategoriesWidget';
+import { WeeklySpendWidget } from '@/components/analytics/WeeklySpendWidget';
 import { useStyles } from '@/constants/Styles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpense } from '@/store/expenseStore';
@@ -176,22 +174,17 @@ export default function AnalyticsScreen() {
 
                 {/* OVERVIEW TAB */}
                 {activeTab === 'overview' && (
-                    <View style={{ gap: 24 }}>
-                        <View style={{ gap: 24 }}>
-                            {/* Health & KPIs */}
-                            <FinancialHealthWidget targetDate={selectedDate} />
-                            <QuickInsightsWidget targetDate={selectedDate} />
-                            <FinancialKPIsWidget targetDate={selectedDate} />
-                            <MonthComparisonWidget targetDate={selectedDate} />
-                        </View>
+                    <View style={{ gap: 20 }}>
+                        <FinancialKPIsWidget targetDate={selectedDate} />
+                        <WeeklySpendWidget targetDate={selectedDate} />
+                        <MonthComparisonWidget targetDate={selectedDate} />
                     </View>
                 )}
 
                 {/* TRENDS TAB */}
                 {activeTab === 'trends' && (
-                    <View style={{ gap: 24 }}>
+                    <View style={{ gap: 20 }}>
                         <SpendingTrendsWidget targetDate={selectedDate} width={isDesktop ? containerWidth - 40 : undefined} />
-                        <DayOfWeekWidget targetDate={selectedDate} width={isDesktop ? containerWidth - 40 : undefined} />
                     </View>
                 )}
 
